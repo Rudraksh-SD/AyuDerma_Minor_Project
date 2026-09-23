@@ -1,0 +1,28 @@
+@import "tailwindcss";
+
+@layer utilities {
+  .font-kunstler {
+    font-family: 'Kunstler Script', 'Alex Brush', 'Great Vibes', 'Italianno', cursive;
+  }
+  .font-handwriting {
+    font-family: 'Lucida Handwriting', 'Caveat', 'Marck Script', cursive;
+  }
+  .font-serif-title {
+    font-family: 'Playfair Display', Georgia, serif;
+  }
+}
+
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #f5eedf;
+}
+::-webkit-scrollbar-thumb {
+  background: #cfd4be;
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #9aab7b;
+}

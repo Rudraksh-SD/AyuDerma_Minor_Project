@@ -1,0 +1,6 @@
+{
+  "name": "AyuDerma - Ayurvedic Skin Health & Analysis",
+  "description": "Holistic Ayurvedic skin health platform connecting AI-powered skin analysis, personalized herbal routines, progress tracking, and history.",
+  "requestFramePermissions": ["camera"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
