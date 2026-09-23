@@ -1,5 +1,24 @@
 @import "tailwindcss";
 
+@layer base {
+  html {
+    scroll-behavior: smooth;
+    font-family: 'Plus Jakarta Sans', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+  }
+  
+  @media (prefers-reduced-motion: reduce) {
+    html {
+      scroll-behavior: auto;
+    }
+    *, ::before, ::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+}
+
 @layer utilities {
   .font-kunstler {
     font-family: 'Kunstler Script', 'Alex Brush', 'Great Vibes', 'Italianno', cursive;
@@ -10,19 +29,23 @@
   .font-serif-title {
     font-family: 'Playfair Display', Georgia, serif;
   }
+  .font-sans-ui {
+    font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+  }
 }
 
+/* Polished clinical custom scrollbar */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
 }
 ::-webkit-scrollbar-track {
-  background: #f5eedf;
+  background: #f7f2ea;
 }
 ::-webkit-scrollbar-thumb {
-  background: #cfd4be;
+  background: #c8bdab;
   border-radius: 9999px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #9aab7b;
+  background: #495c27;
 }

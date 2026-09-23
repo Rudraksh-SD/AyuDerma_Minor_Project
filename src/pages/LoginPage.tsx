@@ -1,10 +1,12 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { IMAGES } from '../data/initialData';
-import { Droplet, Leaf, Sparkles, Mail, Lock, Eye, EyeOff, ShieldCheck } from 'lucide-react';
+import { Droplet, Leaf, Sparkles, Mail, Lock, Eye, EyeOff, ShieldCheck, ArrowRight } from 'lucide-react';
+import { motion } from 'motion/react';
+import { fadeUpVariants, staggerContainer } from '../utils/animations';
 
 export const LoginPage: React.FC = () => {
-  const { login, setActivePage, showToast, user } = useApp();
+  const { login, showToast } = useApp();
   const [email, setEmail] = useState('ananya.sharma@example.com');
   const [password, setPassword] = useState('ayurveda2024');
   const [showPassword, setShowPassword] = useState(false);
@@ -25,7 +27,7 @@ export const LoginPage: React.FC = () => {
   };
 
   return (
-    <div className="relative w-full flex-1 flex flex-col justify-between px-6 md:px-14 py-6 md:py-8">
+    <div className="relative w-full flex-1 flex flex-col justify-between px-6 md:px-14 py-6 md:py-8 font-sans text-[#2c2823]">
       {/* Background shadow leaf */}
       <div className="absolute top-0 left-0 w-80 h-80 pointer-events-none opacity-20 select-none -z-10">
         <svg viewBox="0 0 200 200" fill="#4d5f2a" className="w-full h-full filter blur-[1px]">
@@ -35,31 +37,41 @@ export const LoginPage: React.FC = () => {
 
       <div className="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-8 items-center max-w-7xl mx-auto w-full">
         {/* Left Typography & Hero Branding */}
-        <div className="lg:col-span-6 flex flex-col justify-between space-y-6 pt-2">
+        <motion.div
+          variants={staggerContainer}
+          initial="initial"
+          animate="animate"
+          className="lg:col-span-6 flex flex-col justify-between space-y-6 pt-2"
+        >
           <div>
-            <h1 className="font-kunstler text-7xl sm:text-8xl md:text-9xl text-[#394a1d] leading-none tracking-tight select-none">
+            <span className="text-xs font-semibold tracking-widest text-[#495c27] uppercase block font-sans">
+              HOLISTIC SKIN HEALTH PLATFORM
+            </span>
+
+            <h1 className="font-serif-title font-extrabold text-5xl sm:text-6xl md:text-7xl text-[#2c3817] leading-tight select-none mt-1">
               AyuDerma
-              <span className="inline-block transform translate-y-[-15%] -ml-1 text-[#485926] text-3xl md:text-4xl">🌿</span>
+              <span className="inline-block transform translate-y-[-10%] ml-2 text-[#495c27] text-3xl md:text-4xl">🌿</span>
             </h1>
 
+            {/* Star Divider & Subtitle */}
             <div className="mt-4 flex flex-col items-start gap-2">
               <div className="flex items-center gap-3 w-full max-w-md">
                 <div className="h-[1px] flex-1 bg-gradient-to-r from-transparent via-[#b8aa92] to-transparent" />
-                <span className="text-[#847558] text-base select-none">✦</span>
+                <span className="text-[#847558] text-sm select-none">✦</span>
                 <div className="h-[1px] flex-1 bg-gradient-to-r from-transparent via-[#b8aa92] to-transparent" />
               </div>
-              <h2 className="text-[#514532] text-xs sm:text-sm font-semibold tracking-[0.25em] uppercase font-sans">
-                HEALTHY SKIN. CONFIDENT YOU.
+              <h2 className="text-[#514532] text-xs sm:text-sm font-semibold tracking-[0.2em] uppercase font-sans">
+                Healthy Skin. Confident You.
               </h2>
             </div>
 
             {/* 3 Icons */}
             <div className="flex items-center gap-6 sm:gap-10 py-5">
               <div className="flex flex-col items-center">
-                <div className="w-12 h-12 rounded-full border border-[#b2a48f] bg-[#faf5ec]/60 flex items-center justify-center text-[#554734]">
-                  <Droplet className="w-5 h-5 text-[#5e4f3a]" />
+                <div className="w-12 h-12 rounded-full border border-[#b2a48f] bg-[#faf5ec]/80 flex items-center justify-center text-[#495c27] shadow-2xs">
+                  <Droplet className="w-5 h-5" />
                 </div>
-                <span className="text-[10px] font-semibold tracking-[0.2em] text-[#554734] mt-2 uppercase">
+                <span className="text-[10px] font-semibold tracking-[0.2em] text-[#4d4231] mt-2 uppercase">
                   NOURISH
                 </span>
               </div>
@@ -67,10 +79,10 @@ export const LoginPage: React.FC = () => {
               <div className="h-10 w-[1px] bg-[#d9cdba]" />
 
               <div className="flex flex-col items-center">
-                <div className="w-12 h-12 rounded-full border border-[#b2a48f] bg-[#faf5ec]/60 flex items-center justify-center text-[#554734]">
-                  <Leaf className="w-5 h-5 text-[#5e4f3a]" />
+                <div className="w-12 h-12 rounded-full border border-[#b2a48f] bg-[#faf5ec]/80 flex items-center justify-center text-[#495c27] shadow-2xs">
+                  <Leaf className="w-5 h-5" />
                 </div>
-                <span className="text-[10px] font-semibold tracking-[0.2em] text-[#554734] mt-2 uppercase">
+                <span className="text-[10px] font-semibold tracking-[0.2em] text-[#4d4231] mt-2 uppercase">
                   PROTECT
                 </span>
               </div>
@@ -78,17 +90,17 @@ export const LoginPage: React.FC = () => {
               <div className="h-10 w-[1px] bg-[#d9cdba]" />
 
               <div className="flex flex-col items-center">
-                <div className="w-12 h-12 rounded-full border border-[#b2a48f] bg-[#faf5ec]/60 flex items-center justify-center text-[#554734]">
-                  <Sparkles className="w-5 h-5 text-[#5e4f3a]" />
+                <div className="w-12 h-12 rounded-full border border-[#b2a48f] bg-[#faf5ec]/80 flex items-center justify-center text-[#495c27] shadow-2xs">
+                  <Sparkles className="w-5 h-5" />
                 </div>
-                <span className="text-[10px] font-semibold tracking-[0.2em] text-[#554734] mt-2 uppercase">
+                <span className="text-[10px] font-semibold tracking-[0.2em] text-[#4d4231] mt-2 uppercase">
                   GLOW
                 </span>
               </div>
             </div>
           </div>
 
-          {/* Bottom Left: Mortar & Herbs image */}
+          {/* Bottom Left Image */}
           <div className="w-64 sm:w-80 max-w-full">
             <img
               src={IMAGES.mortarHerbs}
@@ -97,10 +109,15 @@ export const LoginPage: React.FC = () => {
               className="w-full h-auto object-contain rounded-2xl drop-shadow-md"
             />
           </div>
-        </div>
+        </motion.div>
 
         {/* Right Floating Login Card */}
-        <div className="lg:col-span-6 flex justify-center lg:justify-end items-center">
+        <motion.div
+          variants={fadeUpVariants}
+          initial="initial"
+          animate="animate"
+          className="lg:col-span-6 flex justify-center lg:justify-end items-center"
+        >
           <div
             id="card-login"
             className="w-full max-w-md bg-[#faf5ec]/95 backdrop-blur-md rounded-[28px] border border-[#e8ddce] p-7 sm:p-9 shadow-[0_16px_40px_rgba(80,68,48,0.09)] transition-all"
@@ -110,18 +127,18 @@ export const LoginPage: React.FC = () => {
               <span className="text-[#495c27] text-2xl">🌿</span>
             </div>
 
-            <div className="text-center mb-4">
-              <h2 className="font-handwriting text-3xl sm:text-4xl text-[#394a1d] font-bold">
-                {isRegistering ? 'Create Account' : 'Welcome Back'}
+            <div className="text-center mb-5">
+              <h2 className="font-serif-title text-2xl sm:text-3xl text-[#2c3817] font-bold">
+                {isRegistering ? 'Create Your Account' : 'Welcome Back'}
               </h2>
-              <p className="font-handwriting text-xs text-[#736855] mt-0.5">
-                {isRegistering ? 'Begin your personalized holistic skin journey' : 'Login to continue your skin journey'}
+              <p className="text-xs text-[#736855] mt-1 font-sans">
+                {isRegistering ? 'Begin your personalized holistic skin wellness journey' : 'Sign in to access your scan history and routines'}
               </p>
 
               {/* Flourish ornament */}
-              <div className="flex items-center justify-center gap-2 mt-2">
+              <div className="flex items-center justify-center gap-2 mt-3">
                 <div className="w-12 h-[1px] bg-[#d4c6b2]" />
-                <span className="text-xs text-[#526430]">🌿</span>
+                <span className="text-xs text-[#495c27]">🌿</span>
                 <div className="w-12 h-[1px] bg-[#d4c6b2]" />
               </div>
             </div>
@@ -129,16 +146,16 @@ export const LoginPage: React.FC = () => {
             <form onSubmit={handleSubmit} className="space-y-4">
               {isRegistering && (
                 <div>
-                  <label className="block text-xs font-semibold text-[#504533] mb-1">
-                    Your Name
+                  <label className="block text-xs font-semibold text-[#4d4231] mb-1 font-sans">
+                    Full Name
                   </label>
                   <div className="relative">
                     <input
                       type="text"
-                      placeholder="Enter your name"
+                      placeholder="Enter your full name"
                       value={name}
                       onChange={(e) => setName(e.target.value)}
-                      className="w-full bg-[#f6efe2] border border-[#d6c7b0] rounded-xl px-4 py-2.5 text-xs text-[#403626] placeholder-[#9a8d79] focus:outline-none focus:ring-1 focus:ring-[#4a5e29]"
+                      className="w-full bg-[#f6efe2] border border-[#d6c7b0] rounded-xl px-4 py-2.5 text-xs text-[#3d3424] placeholder-[#9a8d79] focus:outline-none focus:ring-1 focus:ring-[#495c27] font-sans"
                       required
                     />
                   </div>
@@ -146,7 +163,7 @@ export const LoginPage: React.FC = () => {
               )}
 
               <div>
-                <label className="block text-xs font-semibold text-[#504533] mb-1">
+                <label className="block text-xs font-semibold text-[#4d4231] mb-1 font-sans">
                   Email Address
                 </label>
                 <div className="relative flex items-center">
@@ -154,17 +171,17 @@ export const LoginPage: React.FC = () => {
                   <input
                     id="input-email"
                     type="email"
-                    placeholder="Enter your email"
+                    placeholder="Enter your email address"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    className="w-full bg-[#f6efe2] border border-[#d6c7b0] rounded-xl pl-10 pr-4 py-2.5 text-xs text-[#403626] placeholder-[#9a8d79] focus:outline-none focus:ring-1 focus:ring-[#4a5e29]"
+                    className="w-full bg-[#f6efe2] border border-[#d6c7b0] rounded-xl pl-10 pr-4 py-2.5 text-xs text-[#3d3424] placeholder-[#9a8d79] focus:outline-none focus:ring-1 focus:ring-[#495c27] font-sans"
                     required
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-[#504533] mb-1">
+                <label className="block text-xs font-semibold text-[#4d4231] mb-1 font-sans">
                   Password
                 </label>
                 <div className="relative flex items-center">
@@ -175,13 +192,13 @@ export const LoginPage: React.FC = () => {
                     placeholder="Enter your password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="w-full bg-[#f6efe2] border border-[#d6c7b0] rounded-xl pl-10 pr-10 py-2.5 text-xs text-[#403626] placeholder-[#9a8d79] focus:outline-none focus:ring-1 focus:ring-[#4a5e29]"
+                    className="w-full bg-[#f6efe2] border border-[#d6c7b0] rounded-xl pl-10 pr-10 py-2.5 text-xs text-[#3d3424] placeholder-[#9a8d79] focus:outline-none focus:ring-1 focus:ring-[#495c27] font-sans"
                     required
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 text-[#8a7d69] hover:text-[#4a5e29] focus:outline-none"
+                    className="absolute right-3 text-[#8a7d69] hover:text-[#495c27] focus:outline-none"
                   >
                     {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>
@@ -192,7 +209,7 @@ export const LoginPage: React.FC = () => {
                     <button
                       type="button"
                       onClick={handleForgotPassword}
-                      className="font-handwriting text-xs text-[#6e614d] hover:text-[#384a1d] italic"
+                      className="text-xs text-[#6e614d] hover:text-[#2c3817] font-sans hover:underline"
                     >
                       Forgot Password?
                     </button>
@@ -204,10 +221,10 @@ export const LoginPage: React.FC = () => {
                 <button
                   id="btn-submit-login"
                   type="submit"
-                  className="w-full bg-[#495c27] hover:bg-[#3d4d1f] text-white py-3 rounded-full font-handwriting text-lg sm:text-xl font-medium shadow-[0_4px_14px_rgba(73,92,39,0.25)] transition-all flex items-center justify-center gap-2 hover:scale-[1.01] active:scale-[0.99]"
+                  className="w-full bg-[#495c27] hover:bg-[#3d4d1f] text-white py-3 rounded-full font-sans text-sm font-semibold shadow-[0_4px_14px_rgba(73,92,39,0.25)] transition-all flex items-center justify-center gap-2 hover:scale-[1.01] active:scale-[0.99] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#495c27]"
                 >
-                  <span>{isRegistering ? 'Create Account' : 'Login'}</span>
-                  <span>🍃</span>
+                  <span>{isRegistering ? 'Create Account' : 'Sign In'}</span>
+                  <ArrowRight className="w-4 h-4" />
                 </button>
               </div>
 
@@ -223,7 +240,7 @@ export const LoginPage: React.FC = () => {
                 id="btn-login-google"
                 type="button"
                 onClick={handleGoogleLogin}
-                className="w-full bg-[#faf5eb] hover:bg-[#f1e8d9] border border-[#d6c7af] text-[#4d4231] py-2.5 rounded-full text-xs font-semibold flex items-center justify-center gap-2.5 shadow-sm transition-all"
+                className="w-full bg-[#faf5eb] hover:bg-[#f1e8d9] border border-[#d6c7af] text-[#4d4231] py-2.5 rounded-full text-xs font-semibold flex items-center justify-center gap-2.5 shadow-sm transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-[#495c27]"
               >
                 <svg className="w-4 h-4" viewBox="0 0 24 24">
                   <path
@@ -250,26 +267,25 @@ export const LoginPage: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setIsRegistering(!isRegistering)}
-                  className="font-handwriting text-xs text-[#6e614d] hover:text-[#384a1d]"
+                  className="text-xs text-[#6e614d] hover:text-[#2c3817] font-sans"
                 >
                   {isRegistering ? (
-                    <>Already have an account? <span className="underline font-bold">Login here</span></>
+                    <>Already have an account? <span className="underline font-bold">Sign in</span></>
                   ) : (
-                    <>New to AyuDerma? <span className="underline font-bold">Create an account</span></>
+                    <>New to AyuDerma? <span className="underline font-bold">Create account</span></>
                   )}
                 </button>
               </div>
             </form>
           </div>
-        </div>
+        </motion.div>
       </div>
 
       {/* Footer Security Note */}
       <div className="max-w-md mx-auto mt-6 text-center">
-        <div className="inline-flex items-center gap-2 text-xs text-[#6b5f4c]">
-          <ShieldCheck className="w-4 h-4 text-[#4a5e29]" />
-          <span>Your data is safe with us. We respect your privacy.</span>
-          <span className="text-xs text-[#4a5e29]">🌿</span>
+        <div className="inline-flex items-center gap-2 text-xs text-[#6b5f4c] font-sans">
+          <ShieldCheck className="w-4 h-4 text-[#495c27]" />
+          <span>Your data is encrypted and private. We adhere to clinical privacy standards.</span>
         </div>
       </div>
     </div>
