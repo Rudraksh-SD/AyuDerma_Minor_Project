@@ -1,8 +1,14 @@
 export type PageType = 'home' | 'scan' | 'progress' | 'history' | 'profile' | 'login';
 
 export interface UserProfile {
+  id?: string;
   name: string;
   email: string;
+  dateOfBirth?: string;
+  gender?: string;
+  phone?: string;
+  city?: string;
+  country?: string;
   isLoggedIn: boolean;
   avatarUrl: string;
   skinType: string;
@@ -43,6 +49,7 @@ export interface SavedRemedy {
 
 export interface SkinScan {
   id: string;
+  user_id?: string;
   date: string;
   time: string;
   timestamp: number;
@@ -65,6 +72,25 @@ export interface SkinScan {
     pigmentation: { score: number; label: string };
     glow: { score: number; label: string };
   };
+  // Supabase disease_searches fields
+  symptoms?: string;
+  probable_cause?: string;
+  ayurvedic_remedy?: string;
+  diet_recommendation?: string;
+  created_at?: string;
+}
+
+export interface DiseaseSearchRecord {
+  id: string;
+  user_id: string;
+  image_url: string;
+  predicted_disease: string;
+  confidence: string | number;
+  symptoms: string;
+  probable_cause: string;
+  ayurvedic_remedy: string;
+  diet_recommendation: string;
+  created_at: string;
 }
 
 export interface ProgressDataPoint {

@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
-import { Search, Filter, Leaf, ChevronRight, ShieldCheck } from 'lucide-react';
+import { Search, Filter, Leaf, ChevronRight, ShieldCheck, Trash2, Loader2, Calendar } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { fadeUpVariants, cardHoverProps } from '../utils/animations';
 
 export const HistoryPage: React.FC = () => {
-  const { scans, setSelectedScan } = useApp();
+  const { scans, setSelectedScan, deleteScan, historyLoading } = useApp();
   const [searchQuery, setSearchQuery] = useState('');
   const [filterType, setFilterType] = useState<string>('All');
   const [showFilterDropdown, setShowFilterDropdown] = useState(false);
@@ -14,6 +14,8 @@ export const HistoryPage: React.FC = () => {
     const matchesSearch =
       scan.date.toLowerCase().includes(searchQuery.toLowerCase()) ||
       scan.skinType.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      scan.primaryConcern.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (scan.symptoms && scan.symptoms.toLowerCase().includes(searchQuery.toLowerCase())) ||
       scan.concerns.some(c => c.toLowerCase().includes(searchQuery.toLowerCase())) ||
       scan.recommendedRoutine.some(r => r.toLowerCase().includes(searchQuery.toLowerCase()));
 
@@ -25,6 +27,13 @@ export const HistoryPage: React.FC = () => {
     if (filterType === 'Good Score') return scan.skinScore >= 75;
     return true;
   });
+
+  const handleDelete = async (e: React.MouseEvent, id: string) => {
+    e.stopPropagation();
+    if (confirm('Delete this scan record from your history?')) {
+      await deleteScan(id);
+    }
+  };
 
   return (
     <div className="relative w-full flex-1 flex flex-col justify-between px-6 md:px-14 py-6 md:py-8 font-sans text-[#2c2823]">
@@ -39,12 +48,12 @@ export const HistoryPage: React.FC = () => {
         {/* Top Header Row with Search & Filter */}
         <motion.div variants={fadeUpVariants} initial="initial" animate="animate" className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
-            <span className="text-xs font-semibold tracking-widest text-[#495c27] uppercase block">ANALYSIS TIMELINE</span>
+            <span className="text-xs font-semibold tracking-widest text-[#495c27] uppercase block">SUPABASE DISEASE SEARCHES</span>
             <h1 className="font-serif-title font-bold text-4xl sm:text-5xl text-[#2c3817] leading-tight select-none mt-0.5">
               Skin Scan History
             </h1>
             <p className="text-xs sm:text-sm text-[#665a48] mt-1">
-              Review historical skin analysis records, detected concerns, and past herbal regimens.
+              Review historical skin disease searches, detected symptoms, and herbal prescriptions.
             </p>
           </div>
 
@@ -56,7 +65,7 @@ export const HistoryPage: React.FC = () => {
               <input
                 id="input-search-history"
                 type="text"
-                placeholder="Search by date, skin type, or concern..."
+                placeholder="Search by disease, symptoms, or date..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="bg-[#faf5ec]/90 backdrop-blur-md border border-[#e5dcce] rounded-full pl-10 pr-4 py-2 text-xs text-[#3d3424] placeholder-[#958874] w-60 sm:w-72 shadow-xs focus:outline-none focus:ring-1 focus:ring-[#495c27]"
@@ -111,15 +120,26 @@ export const HistoryPage: React.FC = () => {
           {/* Vertical Timeline Guide Line */}
           <div className="absolute left-2.5 sm:left-4 top-4 bottom-4 w-[2px] bg-[#d9cdba]" />
 
-          {filteredScans.length === 0 ? (
+          {historyLoading ? (
+            <div className="bg-[#faf5ec]/80 rounded-3xl p-10 text-center border border-[#e8ded0] flex flex-col items-center justify-center gap-2">
+              <Loader2 className="w-6 h-6 animate-spin text-[#495c27]" />
+              <p className="text-xs font-sans font-semibold text-[#495c27]">
+                Retrieving patient disease search history from Supabase...
+              </p>
+            </div>
+          ) : filteredScans.length === 0 ? (
             <div className="bg-[#faf5ec]/80 rounded-3xl p-10 text-center border border-[#e8ded0]">
               <p className="text-sm font-sans text-[#786c59]">
-                No skin scans match your search query.
+                No skin scan history records found.
               </p>
             </div>
           ) : (
             filteredScans.map((scan) => {
-              const [day, month, year] = scan.date.split(' ');
+              const dateParts = scan.date ? scan.date.split(' ') : ['01', 'Jan', '2024'];
+              const day = dateParts[0] || '01';
+              const month = dateParts[1] || 'Jan';
+              const year = dateParts[2] || '2024';
+
               return (
                 <div key={scan.id} className="relative flex items-center">
                   {/* Timeline Circle Node */}
@@ -130,7 +150,8 @@ export const HistoryPage: React.FC = () => {
                   {/* Timeline Card */}
                   <motion.div
                     {...cardHoverProps}
-                    className="w-full bg-[#faf5ec]/95 backdrop-blur-md border border-[#e8ded0] rounded-3xl p-4 sm:p-5 shadow-[0_4px_16px_rgba(90,75,50,0.04)] grid grid-cols-1 md:grid-cols-12 gap-4 items-center transition-all"
+                    onClick={() => setSelectedScan(scan)}
+                    className="w-full bg-[#faf5ec]/95 backdrop-blur-md border border-[#e8ded0] rounded-3xl p-4 sm:p-5 shadow-[0_4px_16px_rgba(90,75,50,0.04)] grid grid-cols-1 md:grid-cols-12 gap-4 items-center transition-all cursor-pointer group"
                   >
                     {/* Date Block */}
                     <div className="md:col-span-2 flex items-center md:flex-col md:items-start border-b md:border-b-0 md:border-r border-[#e8ded0] pb-2 md:pb-0 md:pr-4">
@@ -149,85 +170,70 @@ export const HistoryPage: React.FC = () => {
                     <div className="md:col-span-2 flex justify-start md:justify-center">
                       <img
                         src={scan.thumbnailUrl}
-                        alt="Skin scan thumbnail"
+                        alt="Uploaded skin scan"
                         referrerPolicy="no-referrer"
-                        className="w-18 h-18 sm:w-20 sm:h-20 rounded-2xl object-cover border border-[#d8cdbc] shadow-2xs"
+                        className="w-18 h-18 sm:w-20 sm:h-20 rounded-2xl object-cover border border-[#d8cdbc] shadow-2xs group-hover:scale-105 transition-transform"
                       />
                     </div>
 
-                    {/* Skin Type & Concerns */}
-                    <div className="md:col-span-3 space-y-1.5">
-                      <div className="flex items-center gap-1.5">
-                        <span className="text-[11px] text-[#786c59]">Skin Type:</span>
-                        <span className="inline-flex items-center gap-1 text-xs font-bold text-[#2c3817]">
-                          <Leaf className="w-3 h-3 text-[#495c27]" />
-                          {scan.skinType}
-                        </span>
+                    {/* Predicted Disease & Symptoms */}
+                    <div className="md:col-span-3 space-y-1">
+                      <div className="text-[10px] text-[#867a68] uppercase tracking-wider font-semibold">
+                        Predicted Disease
                       </div>
-                      <div>
-                        <div className="text-[10px] text-[#867a68] uppercase tracking-wider font-semibold">
-                          Detected Concerns:
-                        </div>
-                        <div className="flex flex-wrap gap-x-2 gap-y-0.5 mt-0.5 text-xs text-[#504432]">
-                          {scan.concerns.map((c, i) => (
-                            <span key={i} className="flex items-center gap-1 font-medium">
-                              &bull; {c}
-                            </span>
-                          ))}
-                        </div>
-                      </div>
+                      <h4 className="font-serif-title text-base font-bold text-[#2c3817] leading-tight">
+                        {scan.primaryConcern}
+                      </h4>
+
+                      {scan.symptoms && (
+                        <p className="text-[11px] text-[#635644] line-clamp-2 font-sans">
+                          <span className="font-semibold">Symptoms:</span> {scan.symptoms}
+                        </p>
+                      )}
                     </div>
 
-                    {/* Skin Score Meter */}
+                    {/* Confidence & Severity */}
                     <div className="md:col-span-2 flex flex-col items-center text-center">
-                      <div className="text-[10px] text-[#867a68] uppercase tracking-wider font-semibold mb-1">
-                        Skin Score
+                      <div className="text-[10px] text-[#867a68] uppercase tracking-wider font-semibold mb-0.5">
+                        Confidence
                       </div>
-                      <div className="relative w-12 h-12 flex items-center justify-center">
-                        <svg className="w-full h-full transform -rotate-90" viewBox="0 0 40 40">
-                          <circle cx="20" cy="20" r="16" stroke="#e6dccb" strokeWidth="3" fill="transparent" />
-                          <circle
-                            cx="20"
-                            cy="20"
-                            r="16"
-                            stroke="#495c27"
-                            strokeWidth="3"
-                            fill="transparent"
-                            strokeDasharray={2 * Math.PI * 16}
-                            strokeDashoffset={2 * Math.PI * 16 * (1 - scan.skinScore / 100)}
-                            strokeLinecap="round"
-                          />
-                        </svg>
-                        <div className="absolute font-sans text-xs font-bold text-[#2c3817]">
-                          {scan.skinScore}
-                        </div>
+                      <div className="text-base font-bold text-[#2c3817]">
+                        {scan.confidence}
                       </div>
-                      <span className="text-[10px] font-bold text-[#2c3817] mt-0.5 flex items-center gap-0.5">
-                        {scan.scoreLabel} <span className="text-[10px]">🌿</span>
+                      <span className="text-[10px] font-semibold text-[#495c27] mt-0.5">
+                        {scan.accuracy}
                       </span>
                     </div>
 
-                    {/* Recommended Routine & Details Button */}
+                    {/* Ayurvedic & Diet Recommendation */}
                     <div className="md:col-span-3 flex items-center justify-between gap-3 border-t md:border-t-0 md:border-l border-[#e8ded0] pt-2 md:pt-0 md:pl-4">
                       <div className="space-y-0.5">
                         <div className="flex items-center gap-1 text-[10px] text-[#867a68] uppercase tracking-wider font-semibold">
-                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-3 h-3 text-[#495c27]">
-                            <path d="M12 2v6m-4-2l4 4 4-4M4 11h16a8 8 0 0 1-16 0z" />
-                          </svg>
-                          <span>Recommended Routine</span>
+                          <Leaf className="w-3 h-3 text-[#495c27]" />
+                          <span>Ayurvedic Prescription</span>
                         </div>
                         <p className="text-[11px] text-[#554937] leading-snug line-clamp-2 font-sans">
-                          {scan.recommendedRoutine.join(', ')}
+                          {scan.ayurvedic_remedy || scan.recommendedRoutine.join(', ')}
                         </p>
                       </div>
 
-                      <button
-                        onClick={() => setSelectedScan(scan)}
-                        className="flex-shrink-0 px-3.5 py-1.5 rounded-full border border-[#495c27] text-[#495c27] hover:bg-[#495c27] hover:text-white text-xs font-semibold flex items-center gap-1 transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-[#495c27]"
-                      >
-                        <span>Details</span>
-                        <ChevronRight className="w-3 h-3" />
-                      </button>
+                      <div className="flex items-center gap-1 flex-shrink-0">
+                        <button
+                          onClick={(e) => handleDelete(e, scan.id)}
+                          title="Delete record"
+                          className="p-1.5 rounded-full text-red-700/60 hover:text-red-700 hover:bg-red-50 transition-colors"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+
+                        <button
+                          onClick={() => setSelectedScan(scan)}
+                          className="px-3 py-1.5 rounded-full border border-[#495c27] text-[#495c27] hover:bg-[#495c27] hover:text-white text-xs font-semibold flex items-center gap-0.5 transition-all focus:outline-none"
+                        >
+                          <span>Details</span>
+                          <ChevronRight className="w-3 h-3" />
+                        </button>
+                      </div>
                     </div>
                   </motion.div>
                 </div>
@@ -248,10 +254,10 @@ export const HistoryPage: React.FC = () => {
           </div>
           <div>
             <h4 className="text-xs font-bold text-[#2c3817] tracking-wide uppercase font-sans">
-              Holistic Tracking
+              Encrypted Supabase Patient Records
             </h4>
             <p className="text-xs text-[#635745] mt-0.5 leading-relaxed font-sans flex items-center gap-1">
-              <span>Each record builds a comprehensive profile of your skin's dosha balance and long-term health.</span>
+              <span>All skin searches are protected by Row Level Security (RLS) linked to your authenticated user identity.</span>
               <span className="text-xs text-[#495c27]">🌿</span>
             </p>
           </div>

@@ -1,25 +1,131 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import { IMAGES } from '../data/initialData';
-import { Droplet, Leaf, Sparkles, Mail, Lock, Eye, EyeOff, ShieldCheck, ArrowRight } from 'lucide-react';
+import { Droplet, Leaf, Sparkles, Mail, Lock, Eye, EyeOff, ShieldCheck, ArrowRight, Loader2, Calendar, User, MapPin, Globe } from 'lucide-react';
 import { motion } from 'motion/react';
 import { fadeUpVariants, staggerContainer } from '../utils/animations';
+import { calculateAgeFromDOB } from '../services/supabaseService';
 
 export const LoginPage: React.FC = () => {
-  const { login, showToast } = useApp();
+  const { user, login, signUp, updateProfile, setActivePage, showToast } = useApp();
   const [email, setEmail] = useState('ananya.sharma@example.com');
   const [password, setPassword] = useState('ayurveda2024');
   const [showPassword, setShowPassword] = useState(false);
   const [isRegistering, setIsRegistering] = useState(false);
   const [name, setName] = useState('Ananya Sharma');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    login(email);
+  // Multi-step signup/details state
+  const [signupStep, setSignupStep] = useState<'account' | 'details'>('account');
+
+  // Personal Details step fields
+  const [dateOfBirth, setDateOfBirth] = useState(user.dateOfBirth || '');
+  const [age, setAge] = useState<number>(user.age || (user.dateOfBirth ? calculateAgeFromDOB(user.dateOfBirth) : 25));
+  const [gender, setGender] = useState(user.gender || 'Prefer not to say');
+  const [city, setCity] = useState(user.city || '');
+  const [country, setCountry] = useState(user.country || 'India');
+
+  // Get today's date formatted as YYYY-MM-DD for max date restriction
+  const todayStr = new Date().toISOString().split('T')[0];
+
+  // Pre-fill fields when user state updates
+  useEffect(() => {
+    if (user.dateOfBirth) setDateOfBirth(user.dateOfBirth);
+    if (user.gender) setGender(user.gender);
+    if (user.city) setCity(user.city);
+    if (user.country) setCountry(user.country);
+    if (user.dateOfBirth) {
+      setAge(calculateAgeFromDOB(user.dateOfBirth));
+    }
+  }, [user]);
+
+  // Recalculate age whenever date of birth changes
+  const handleDobChange = (dobValue: string) => {
+    setDateOfBirth(dobValue);
+    if (dobValue) {
+      const calculatedAge = calculateAgeFromDOB(dobValue);
+      setAge(calculatedAge);
+    } else {
+      setAge(0);
+    }
   };
 
-  const handleGoogleLogin = () => {
-    login('ananya.sharma@example.com');
+  // Step 1 Submit (Account creation or Login)
+  const handleAccountSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setErrorMessage(null);
+    setIsSubmitting(true);
+
+    try {
+      if (isRegistering) {
+        const res = await signUp(name, email, password);
+        if (res.success) {
+          if (res.isProfileComplete) {
+            setActivePage('home');
+          } else {
+            setSignupStep('details');
+          }
+        } else if (res.error) {
+          setErrorMessage(res.error);
+        }
+      } else {
+        const res = await login(email, password);
+        if (res.success) {
+          if (res.isProfileComplete) {
+            setActivePage('home');
+          } else {
+            setSignupStep('details');
+          }
+        } else if (res.error) {
+          setErrorMessage(res.error);
+        }
+      }
+    } catch (err: any) {
+      setErrorMessage(err.message || 'Authentication error. Please check your credentials.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  // Step 2 Submit (Personal Details step)
+  const handleDetailsSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setErrorMessage(null);
+
+    // Validate DOB is not in the future
+    if (dateOfBirth && dateOfBirth > todayStr) {
+      setErrorMessage('Date of Birth cannot be a future date.');
+      return;
+    }
+
+    if (!dateOfBirth) {
+      setErrorMessage('Please select a valid Date of Birth.');
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    try {
+      const calculatedAge = calculateAgeFromDOB(dateOfBirth);
+      const formattedLocation = city && country ? `${city}, ${country}` : city || country || 'India';
+
+      await updateProfile({
+        dateOfBirth,
+        age: calculatedAge,
+        gender,
+        city,
+        country,
+        location: formattedLocation,
+      });
+
+      showToast('Profile details saved successfully!');
+      setActivePage('home');
+    } catch (err: any) {
+      setErrorMessage(err.message || 'Error saving personal details. Please try again.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleForgotPassword = () => {
@@ -111,7 +217,7 @@ export const LoginPage: React.FC = () => {
           </div>
         </motion.div>
 
-        {/* Right Floating Login Card */}
+        {/* Right Floating Login/Signup Card */}
         <motion.div
           variants={fadeUpVariants}
           initial="initial"
@@ -127,12 +233,29 @@ export const LoginPage: React.FC = () => {
               <span className="text-[#495c27] text-2xl">🌿</span>
             </div>
 
+            {/* Step Indicator when in Personal Details mode */}
+            {signupStep === 'details' && (
+              <div className="flex items-center justify-center gap-1.5 text-[11px] font-semibold tracking-wider text-[#736855] uppercase font-sans mb-1">
+                <span>Account</span>
+                <span className="text-[#8c7f6c]">&rarr;</span>
+                <span className="text-[#495c27] font-bold">Personal Details</span>
+              </div>
+            )}
+
             <div className="text-center mb-5">
               <h2 className="font-serif-title text-2xl sm:text-3xl text-[#2c3817] font-bold">
-                {isRegistering ? 'Create Your Account' : 'Welcome Back'}
+                {signupStep === 'details'
+                  ? 'Personal Details'
+                  : isRegistering
+                  ? 'Create Your Account'
+                  : 'Welcome Back'}
               </h2>
               <p className="text-xs text-[#736855] mt-1 font-sans">
-                {isRegistering ? 'Begin your personalized holistic skin wellness journey' : 'Sign in to access your scan history and routines'}
+                {signupStep === 'details'
+                  ? 'Please complete your patient profile details'
+                  : isRegistering
+                  ? 'Begin your personalized holistic skin wellness journey'
+                  : 'Sign in to access your scan history and routines'}
               </p>
 
               {/* Flourish ornament */}
@@ -143,140 +266,253 @@ export const LoginPage: React.FC = () => {
               </div>
             </div>
 
-            <form onSubmit={handleSubmit} className="space-y-4">
-              {isRegistering && (
+            {/* Error Message Box */}
+            {errorMessage && (
+              <div className="mb-4 p-3 rounded-xl bg-red-50 border border-red-200 text-red-800 text-xs font-sans">
+                {errorMessage}
+              </div>
+            )}
+
+            {signupStep === 'account' ? (
+              /* STEP 1: Account Form */
+              <form onSubmit={handleAccountSubmit} className="space-y-4">
+                {isRegistering && (
+                  <div>
+                    <label className="block text-xs font-semibold text-[#4d4231] mb-1 font-sans">
+                      Full Name
+                    </label>
+                    <div className="relative">
+                      <input
+                        type="text"
+                        placeholder="Enter your full name"
+                        value={name}
+                        onChange={(e) => setName(e.target.value)}
+                        className="w-full bg-[#f6efe2] border border-[#d6c7b0] rounded-xl px-4 py-2.5 text-xs text-[#3d3424] placeholder-[#9a8d79] focus:outline-none focus:ring-1 focus:ring-[#495c27] font-sans"
+                        required
+                      />
+                    </div>
+                  </div>
+                )}
+
                 <div>
                   <label className="block text-xs font-semibold text-[#4d4231] mb-1 font-sans">
-                    Full Name
+                    Email Address
                   </label>
-                  <div className="relative">
+                  <div className="relative flex items-center">
+                    <Mail className="absolute left-3.5 w-4 h-4 text-[#8a7d69]" />
                     <input
-                      type="text"
-                      placeholder="Enter your full name"
-                      value={name}
-                      onChange={(e) => setName(e.target.value)}
-                      className="w-full bg-[#f6efe2] border border-[#d6c7b0] rounded-xl px-4 py-2.5 text-xs text-[#3d3424] placeholder-[#9a8d79] focus:outline-none focus:ring-1 focus:ring-[#495c27] font-sans"
+                      id="input-email"
+                      type="email"
+                      placeholder="Enter your email address"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      className="w-full bg-[#f6efe2] border border-[#d6c7b0] rounded-xl pl-10 pr-4 py-2.5 text-xs text-[#3d3424] placeholder-[#9a8d79] focus:outline-none focus:ring-1 focus:ring-[#495c27] font-sans"
                       required
                     />
                   </div>
                 </div>
-              )}
 
-              <div>
-                <label className="block text-xs font-semibold text-[#4d4231] mb-1 font-sans">
-                  Email Address
-                </label>
-                <div className="relative flex items-center">
-                  <Mail className="absolute left-3.5 w-4 h-4 text-[#8a7d69]" />
-                  <input
-                    id="input-email"
-                    type="email"
-                    placeholder="Enter your email address"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    className="w-full bg-[#f6efe2] border border-[#d6c7b0] rounded-xl pl-10 pr-4 py-2.5 text-xs text-[#3d3424] placeholder-[#9a8d79] focus:outline-none focus:ring-1 focus:ring-[#495c27] font-sans"
-                    required
-                  />
+                <div>
+                  <label className="block text-xs font-semibold text-[#4d4231] mb-1 font-sans">
+                    Password
+                  </label>
+                  <div className="relative flex items-center">
+                    <Lock className="absolute left-3.5 w-4 h-4 text-[#8a7d69]" />
+                    <input
+                      id="input-password"
+                      type={showPassword ? 'text' : 'password'}
+                      placeholder="Enter your password"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      className="w-full bg-[#f6efe2] border border-[#d6c7b0] rounded-xl pl-10 pr-10 py-2.5 text-xs text-[#3d3424] placeholder-[#9a8d79] focus:outline-none focus:ring-1 focus:ring-[#495c27] font-sans"
+                      required
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-3 text-[#8a7d69] hover:text-[#495c27] focus:outline-none"
+                    >
+                      {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
+
+                  {!isRegistering && (
+                    <div className="text-right mt-1.5">
+                      <button
+                        type="button"
+                        onClick={handleForgotPassword}
+                        className="text-xs text-[#6e614d] hover:text-[#2c3817] font-sans hover:underline"
+                      >
+                        Forgot Password?
+                      </button>
+                    </div>
+                  )}
                 </div>
-              </div>
 
-              <div>
-                <label className="block text-xs font-semibold text-[#4d4231] mb-1 font-sans">
-                  Password
-                </label>
-                <div className="relative flex items-center">
-                  <Lock className="absolute left-3.5 w-4 h-4 text-[#8a7d69]" />
-                  <input
-                    id="input-password"
-                    type={showPassword ? 'text' : 'password'}
-                    placeholder="Enter your password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    className="w-full bg-[#f6efe2] border border-[#d6c7b0] rounded-xl pl-10 pr-10 py-2.5 text-xs text-[#3d3424] placeholder-[#9a8d79] focus:outline-none focus:ring-1 focus:ring-[#495c27] font-sans"
-                    required
-                  />
+                <div className="pt-1">
                   <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 text-[#8a7d69] hover:text-[#495c27] focus:outline-none"
+                    id="btn-submit-login"
+                    type="submit"
+                    disabled={isSubmitting}
+                    className="w-full bg-[#495c27] hover:bg-[#3d4d1f] disabled:opacity-70 text-white py-3 rounded-full font-sans text-sm font-semibold shadow-[0_4px_14px_rgba(73,92,39,0.25)] transition-all flex items-center justify-center gap-2 hover:scale-[1.01] active:scale-[0.99] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#495c27]"
                   >
-                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    {isSubmitting ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        <span>{isRegistering ? 'Creating Account...' : 'Signing In...'}</span>
+                      </>
+                    ) : (
+                      <>
+                        <span>{isRegistering ? 'Continue' : 'Sign In'}</span>
+                        <ArrowRight className="w-4 h-4" />
+                      </>
+                    )}
                   </button>
                 </div>
 
-                {!isRegistering && (
-                  <div className="text-right mt-1.5">
-                    <button
-                      type="button"
-                      onClick={handleForgotPassword}
-                      className="text-xs text-[#6e614d] hover:text-[#2c3817] font-sans hover:underline"
-                    >
-                      Forgot Password?
-                    </button>
+                <div className="text-center pt-1">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsRegistering(!isRegistering);
+                      setErrorMessage(null);
+                    }}
+                    className="text-xs text-[#6e614d] hover:text-[#2c3817] font-sans"
+                  >
+                    {isRegistering ? (
+                      <>Already have an account? <span className="underline font-bold">Sign in</span></>
+                    ) : (
+                      <>New to AyuDerma? <span className="underline font-bold">Create account</span></>
+                    )}
+                  </button>
+                </div>
+              </form>
+            ) : (
+              /* STEP 2: Personal Details Form */
+              <form onSubmit={handleDetailsSubmit} className="space-y-4 font-sans text-xs">
+                {/* Date of Birth */}
+                <div>
+                  <label className="block text-xs font-semibold text-[#4d4231] mb-1 font-sans">
+                    Date of Birth *
+                  </label>
+                  <div className="relative flex items-center">
+                    <Calendar className="absolute left-3.5 w-4 h-4 text-[#8a7d69]" />
+                    <input
+                      type="date"
+                      max={todayStr}
+                      value={dateOfBirth}
+                      onChange={(e) => handleDobChange(e.target.value)}
+                      className="w-full bg-[#f6efe2] border border-[#d6c7b0] rounded-xl pl-10 pr-4 py-2.5 text-xs text-[#3d3424] focus:outline-none focus:ring-1 focus:ring-[#495c27] font-sans"
+                      required
+                    />
                   </div>
-                )}
-              </div>
+                </div>
 
-              <div className="pt-1">
-                <button
-                  id="btn-submit-login"
-                  type="submit"
-                  className="w-full bg-[#495c27] hover:bg-[#3d4d1f] text-white py-3 rounded-full font-sans text-sm font-semibold shadow-[0_4px_14px_rgba(73,92,39,0.25)] transition-all flex items-center justify-center gap-2 hover:scale-[1.01] active:scale-[0.99] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#495c27]"
-                >
-                  <span>{isRegistering ? 'Create Account' : 'Sign In'}</span>
-                  <ArrowRight className="w-4 h-4" />
-                </button>
-              </div>
+                {/* Age (Read-only, calculated automatically) */}
+                <div>
+                  <label className="block text-xs font-semibold text-[#4d4231] mb-1 font-sans">
+                    Age (Calculated Automatically)
+                  </label>
+                  <div className="relative flex items-center">
+                    <User className="absolute left-3.5 w-4 h-4 text-[#8a7d69]" />
+                    <input
+                      type="number"
+                      value={age || ''}
+                      readOnly
+                      placeholder="Calculated automatically from Date of Birth"
+                      className="w-full bg-[#eee4d4] border border-[#d6c7b0] rounded-xl pl-10 pr-4 py-2.5 text-xs text-[#5e523f] cursor-not-allowed font-sans font-semibold"
+                    />
+                  </div>
+                </div>
 
-              {/* OR Divider */}
-              <div className="flex items-center gap-3 py-1">
-                <div className="h-[1px] flex-1 bg-[#d9cdba]" />
-                <span className="text-[10px] font-semibold text-[#8a7d68] tracking-widest uppercase">OR</span>
-                <div className="h-[1px] flex-1 bg-[#d9cdba]" />
-              </div>
+                {/* Gender */}
+                <div>
+                  <label className="block text-xs font-semibold text-[#4d4231] mb-1 font-sans">
+                    Gender *
+                  </label>
+                  <div className="relative flex items-center">
+                    <User className="absolute left-3.5 w-4 h-4 text-[#8a7d69]" />
+                    <select
+                      value={gender}
+                      onChange={(e) => setGender(e.target.value)}
+                      className="w-full bg-[#f6efe2] border border-[#d6c7b0] rounded-xl pl-10 pr-4 py-2.5 text-xs text-[#3d3424] focus:outline-none focus:ring-1 focus:ring-[#495c27] font-sans"
+                      required
+                    >
+                      <option value="">Select Gender</option>
+                      <option value="Male">Male</option>
+                      <option value="Female">Female</option>
+                      <option value="Non-binary">Non-binary</option>
+                      <option value="Prefer not to say">Prefer not to say</option>
+                    </select>
+                  </div>
+                </div>
 
-              {/* Continue with Google */}
-              <button
-                id="btn-login-google"
-                type="button"
-                onClick={handleGoogleLogin}
-                className="w-full bg-[#faf5eb] hover:bg-[#f1e8d9] border border-[#d6c7af] text-[#4d4231] py-2.5 rounded-full text-xs font-semibold flex items-center justify-center gap-2.5 shadow-sm transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-[#495c27]"
-              >
-                <svg className="w-4 h-4" viewBox="0 0 24 24">
-                  <path
-                    fill="#4285F4"
-                    d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.82-2.4 3.68v3.05h3.88c2.27-2.09 3.66-5.17 3.66-9.17z"
-                  />
-                  <path
-                    fill="#34A853"
-                    d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3.05c-1.08.72-2.45 1.16-4.05 1.16-3.12 0-5.77-2.1-6.72-4.93H1.25v3.15C3.26 21.36 7.35 24 12 24z"
-                  />
-                  <path
-                    fill="#FBBC05"
-                    d="M5.28 14.27c-.25-.72-.38-1.49-.38-2.27s.13-1.55.38-2.27V6.58H1.25C.45 8.16 0 9.98 0 12s.45 3.84 1.25 5.42l4.03-3.15z"
-                  />
-                  <path
-                    fill="#EA4335"
-                    d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.35 0 3.26 2.64 1.25 6.58l4.03 3.15c.95-2.83 3.6-4.98 6.72-4.98z"
-                  />
-                </svg>
-                <span>Continue with Google</span>
-              </button>
+                {/* City */}
+                <div>
+                  <label className="block text-xs font-semibold text-[#4d4231] mb-1 font-sans">
+                    City *
+                  </label>
+                  <div className="relative flex items-center">
+                    <MapPin className="absolute left-3.5 w-4 h-4 text-[#8a7d69]" />
+                    <input
+                      type="text"
+                      placeholder="Enter your city (e.g. Mumbai)"
+                      value={city}
+                      onChange={(e) => setCity(e.target.value)}
+                      className="w-full bg-[#f6efe2] border border-[#d6c7b0] rounded-xl pl-10 pr-4 py-2.5 text-xs text-[#3d3424] placeholder-[#9a8d79] focus:outline-none focus:ring-1 focus:ring-[#495c27] font-sans"
+                      required
+                    />
+                  </div>
+                </div>
 
-              <div className="text-center pt-1">
-                <button
-                  type="button"
-                  onClick={() => setIsRegistering(!isRegistering)}
-                  className="text-xs text-[#6e614d] hover:text-[#2c3817] font-sans"
-                >
-                  {isRegistering ? (
-                    <>Already have an account? <span className="underline font-bold">Sign in</span></>
-                  ) : (
-                    <>New to AyuDerma? <span className="underline font-bold">Create account</span></>
-                  )}
-                </button>
-              </div>
-            </form>
+                {/* Country */}
+                <div>
+                  <label className="block text-xs font-semibold text-[#4d4231] mb-1 font-sans">
+                    Country *
+                  </label>
+                  <div className="relative flex items-center">
+                    <Globe className="absolute left-3.5 w-4 h-4 text-[#8a7d69]" />
+                    <select
+                      value={country}
+                      onChange={(e) => setCountry(e.target.value)}
+                      className="w-full bg-[#f6efe2] border border-[#d6c7b0] rounded-xl pl-10 pr-4 py-2.5 text-xs text-[#3d3424] focus:outline-none focus:ring-1 focus:ring-[#495c27] font-sans"
+                      required
+                    >
+                      <option value="">Select Country</option>
+                      <option value="India">India</option>
+                      <option value="United States">United States</option>
+                      <option value="United Kingdom">United Kingdom</option>
+                      <option value="Canada">Canada</option>
+                      <option value="Australia">Australia</option>
+                      <option value="Germany">Germany</option>
+                      <option value="France">France</option>
+                      <option value="United Arab Emirates">United Arab Emirates</option>
+                      <option value="Other">Other</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className="pt-2">
+                  <button
+                    type="submit"
+                    disabled={isSubmitting}
+                    className="w-full bg-[#495c27] hover:bg-[#3d4d1f] disabled:opacity-70 text-white py-3 rounded-full font-sans text-sm font-semibold shadow-[0_4px_14px_rgba(73,92,39,0.25)] transition-all flex items-center justify-center gap-2 hover:scale-[1.01] active:scale-[0.99] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#495c27]"
+                  >
+                    {isSubmitting ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        <span>Saving Profile...</span>
+                      </>
+                    ) : (
+                      <>
+                        <span>Complete Profile</span>
+                        <ArrowRight className="w-4 h-4" />
+                      </>
+                    )}
+                  </button>
+                </div>
+              </form>
+            )}
           </div>
         </motion.div>
       </div>

@@ -111,10 +111,28 @@ export const ProfilePage: React.FC = () => {
 
               <div className="flex items-center justify-between">
                 <span className="text-[#786c59] flex items-center gap-1.5">
-                  <User className="w-3.5 h-3.5 text-[#495c27]" /> Age
+                  <User className="w-3.5 h-3.5 text-[#495c27]" /> Age / Gender
                 </span>
-                <span className="font-semibold text-[#2c3817]">{user.age}</span>
+                <span className="font-semibold text-[#2c3817]">{user.age} {user.gender ? `(${user.gender})` : ''}</span>
               </div>
+
+              {user.dateOfBirth && (
+                <div className="flex items-center justify-between">
+                  <span className="text-[#786c59] flex items-center gap-1.5">
+                    <Calendar className="w-3.5 h-3.5 text-[#495c27]" /> DOB
+                  </span>
+                  <span className="font-semibold text-[#2c3817]">{user.dateOfBirth}</span>
+                </div>
+              )}
+
+              {user.phone && (
+                <div className="flex items-center justify-between">
+                  <span className="text-[#786c59] flex items-center gap-1.5">
+                    <User className="w-3.5 h-3.5 text-[#495c27]" /> Phone
+                  </span>
+                  <span className="font-semibold text-[#2c3817]">{user.phone}</span>
+                </div>
+              )}
 
               <div className="flex items-center justify-between">
                 <span className="text-[#786c59] flex items-center gap-1.5">
