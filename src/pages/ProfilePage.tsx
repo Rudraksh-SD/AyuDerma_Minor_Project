@@ -202,7 +202,7 @@ export const ProfilePage: React.FC = () => {
                   </div>
                   <div className="text-left w-full pl-1">
                     <ul className="text-[9px] text-[#695c48] space-y-0.5 font-medium">
-                      {user.primaryConcerns.map((concern, idx) => (
+                      {(user.primaryConcerns || []).map((concern, idx) => (
                         <li key={idx}>&bull; {concern}</li>
                       ))}
                     </ul>
@@ -265,7 +265,7 @@ export const ProfilePage: React.FC = () => {
                     </svg>
                   </div>
                   <span className="text-[10px] font-semibold text-[#2c3817] leading-tight font-sans">
-                    {user.routine.cleanse}
+                    {user.routine?.cleanse || 'Neem Face Wash'}
                   </span>
                 </div>
 
@@ -278,7 +278,7 @@ export const ProfilePage: React.FC = () => {
                     <Droplet className="w-4 h-4" />
                   </div>
                   <span className="text-[10px] font-semibold text-[#2c3817] leading-tight font-sans">
-                    {user.routine.tone}
+                    {user.routine?.tone || 'Rose Water'}
                   </span>
                 </div>
 
@@ -291,7 +291,7 @@ export const ProfilePage: React.FC = () => {
                     <Leaf className="w-4 h-4" />
                   </div>
                   <span className="text-[10px] font-semibold text-[#2c3817] leading-tight font-sans">
-                    {user.routine.treat}
+                    {user.routine?.treat || 'Kumkumadi Oil'}
                   </span>
                 </div>
 
@@ -304,7 +304,7 @@ export const ProfilePage: React.FC = () => {
                     <Sparkles className="w-4 h-4" />
                   </div>
                   <span className="text-[10px] font-semibold text-[#2c3817] leading-tight font-sans">
-                    {user.routine.moisturize}
+                    {user.routine?.moisturize || 'Aloe Vera Gel'}
                   </span>
                 </div>
 
@@ -317,7 +317,7 @@ export const ProfilePage: React.FC = () => {
                     <Leaf className="w-4 h-4" />
                   </div>
                   <span className="text-[10px] font-semibold text-[#2c3817] leading-tight font-sans">
-                    {user.routine.nourish}
+                    {user.routine?.nourish || 'Night Serum'}
                   </span>
                 </div>
               </div>
@@ -355,7 +355,7 @@ export const ProfilePage: React.FC = () => {
               </div>
 
               <div className="grid grid-cols-2 sm:grid-cols-5 gap-2.5">
-                {user.savedRemedies.map((remedy) => (
+                {(user.savedRemedies || []).map((remedy) => (
                   <div
                     key={remedy.id}
                     className="group relative bg-[#f5ecde] border border-[#e2d5c0] rounded-2xl p-2.5 flex flex-col items-center text-center justify-between transition-transform hover:scale-[1.02]"
@@ -429,12 +429,12 @@ export const ProfilePage: React.FC = () => {
                       strokeWidth="3.5"
                       fill="transparent"
                       strokeDasharray={2 * Math.PI * 16}
-                      strokeDashoffset={2 * Math.PI * 16 * (1 - user.stats.overallProgress / 100)}
+                      strokeDashoffset={2 * Math.PI * 16 * (1 - (user.stats?.overallProgress || 0) / 100)}
                       strokeLinecap="round"
                     />
                   </svg>
                   <div className="absolute font-sans text-xs font-bold text-[#2c3817]">
-                    {user.stats.overallProgress}%
+                    {user.stats?.overallProgress || 0}%
                   </div>
                 </div>
 
@@ -457,19 +457,19 @@ export const ProfilePage: React.FC = () => {
               <div className="grid grid-cols-3 gap-1 pt-3 border-t border-[#e8ded0] text-center font-sans">
                 <div>
                   <div className="text-sm font-bold text-[#2c3817]">
-                    {user.stats.scansCompleted}
+                    {user.stats?.scansCompleted || 0}
                   </div>
                   <div className="text-[9px] text-[#716552]">Scans</div>
                 </div>
                 <div>
                   <div className="text-sm font-bold text-[#2c3817]">
-                    {user.stats.weeksConsistent}
+                    {user.stats?.weeksConsistent || 0}
                   </div>
                   <div className="text-[9px] text-[#716552]">Weeks</div>
                 </div>
                 <div>
                   <div className="text-sm font-bold text-[#2c3817]">
-                    {user.stats.improvementScore}%
+                    {user.stats?.improvementScore || 0}%
                   </div>
                   <div className="text-[9px] text-[#716552]">Improvement</div>
                 </div>

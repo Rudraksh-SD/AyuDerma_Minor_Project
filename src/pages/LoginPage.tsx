@@ -61,22 +61,14 @@ export const LoginPage: React.FC = () => {
       if (isRegistering) {
         const res = await signUp(name, email, password);
         if (res.success) {
-          if (res.isProfileComplete) {
-            setActivePage('home');
-          } else {
-            setSignupStep('details');
-          }
+          setSignupStep('details');
         } else if (res.error) {
           setErrorMessage(res.error);
         }
       } else {
         const res = await login(email, password);
         if (res.success) {
-          if (res.isProfileComplete) {
-            setActivePage('home');
-          } else {
-            setSignupStep('details');
-          }
+          setActivePage('home');
         } else if (res.error) {
           setErrorMessage(res.error);
         }

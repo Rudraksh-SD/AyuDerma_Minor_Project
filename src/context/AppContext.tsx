@@ -18,7 +18,7 @@ interface AppContextType {
   setSelectedScan: (scan: SkinScan | null) => void;
   weeklyProgress: ProgressDataPoint[];
   monthlyProgress: ProgressDataPoint[];
-  updateProfile: (updates: Partial<UserProfile>) => Promise<void>;
+  updateProfile: (updates: Partial<UserProfile>) => Promise<{ success: boolean; error?: string }>;
   updateRoutine: (routine: UserProfile['routine']) => void;
   addSavedRemedy: (remedy: SavedRemedy) => void;
   removeSavedRemedy: (id: string) => void;
@@ -170,20 +170,44 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     // Fetch existing profile from 'profiles' table
     const profile = await getPatientProfile(userId);
 
-    setUser(prev => ({
-      ...prev,
-      id: userId,
-      isLoggedIn: true,
-      name: profile?.name || fullName,
-      email: profile?.email || userEmail,
-      dateOfBirth: profile?.dateOfBirth || prev.dateOfBirth || '',
-      gender: profile?.gender || prev.gender || '',
-      phone: profile?.phone || prev.phone || '',
-      skinType: profile?.skinType || prev.skinType,
-      skinGoals: profile?.skinGoals || prev.skinGoals,
-      age: profile?.age || prev.age,
-      location: profile?.location || prev.location,
-    }));
+    setUser(prev => {
+      // Build a safe profile object that excludes undefined values
+      // to avoid overwriting existing defaults (e.g. primaryConcerns, routine, stats)
+      const safeProfile: Record<string, any> = {};
+      if (profile) {
+        for (const [key, value] of Object.entries(profile)) {
+          if (value !== undefined) {
+            safeProfile[key] = value;
+          }
+        }
+      }
+
+      return {
+        ...prev,
+        id: userId,
+        isLoggedIn: true,
+        name: safeProfile.name || fullName,
+        email: safeProfile.email || userEmail,
+        dateOfBirth: safeProfile.dateOfBirth || prev.dateOfBirth || '',
+        gender: safeProfile.gender || prev.gender || '',
+        phone: safeProfile.phone || prev.phone || '',
+        city: safeProfile.city || prev.city || '',
+        country: safeProfile.country || prev.country || '',
+        skinType: safeProfile.skinType || prev.skinType,
+        skinGoals: safeProfile.skinGoals || prev.skinGoals,
+        age: safeProfile.age || prev.age,
+        location: safeProfile.location || prev.location,
+        avatarUrl: safeProfile.avatarUrl || prev.avatarUrl,
+        primaryConcerns: safeProfile.primaryConcerns || prev.primaryConcerns,
+        sensitivity: safeProfile.sensitivity || prev.sensitivity,
+        sensitivityDescription: safeProfile.sensitivityDescription || prev.sensitivityDescription,
+        currentCondition: safeProfile.currentCondition || prev.currentCondition,
+        conditionDescription: safeProfile.conditionDescription || prev.conditionDescription,
+        routine: safeProfile.routine || prev.routine,
+        savedRemedies: safeProfile.savedRemedies || prev.savedRemedies,
+        stats: safeProfile.stats || prev.stats,
+      };
+    });
 
     // If no existing profile row in Supabase, create default
     if (!profile) {
@@ -194,6 +218,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         skinGoals: INITIAL_USER.skinGoals,
         age: INITIAL_USER.age,
         location: INITIAL_USER.location,
+        routine: INITIAL_USER.routine,
+        savedRemedies: INITIAL_USER.savedRemedies,
+        stats: INITIAL_USER.stats,
       });
     }
 
@@ -240,17 +267,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }, []);
 
   // Supabase Auth Sign In
-  const login = async (email: string, password?: string): Promise<{ success: boolean; isProfileComplete?: boolean; error?: string }> => {
+  const login = async (email: string, password?: string): Promise<{ success: boolean; error?: string }> => {
     try {
       if (!password) {
         // Fallback for simple demo login
         setUser(prev => ({ ...prev, isLoggedIn: true, email }));
-        const isComplete = Boolean(user.dateOfBirth && user.gender);
-        if (isComplete) {
-          showToast(`Welcome back, ${email.split('@')[0]}! Logged in successfully.`);
-          setActivePage('home');
-        }
-        return { success: true, isProfileComplete: isComplete };
+        showToast(`Welcome back, ${email.split('@')[0]}! Logged in successfully.`);
+        setActivePage('home');
+        return { success: true };
       }
 
       const { data, error } = await supabase.auth.signInWithPassword({ email, password });
@@ -265,17 +289,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       if (data.user) {
         await syncSupabaseSession(data.user);
         const profile = await getPatientProfile(data.user.id);
-        const isComplete = Boolean(profile?.dateOfBirth && profile?.gender);
         const namePart = profile?.name || data.user.user_metadata?.full_name || email.split('@')[0];
 
-        if (isComplete) {
-          showToast(`Welcome back, ${namePart}! Logged in successfully.`);
-          setActivePage('home');
-        } else {
-          showToast(`Welcome back, ${namePart}! Please complete your personal details to continue.`, 'info');
-        }
+        showToast(`Welcome back, ${namePart}! Logged in successfully.`);
+        setActivePage('home');
 
-        return { success: true, isProfileComplete: isComplete };
+        return { success: true };
       }
 
       return { success: false, error: 'Authentication failed.' };
@@ -412,15 +431,21 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     setScans(prev => [newScan, ...prev.filter(s => s.id !== newScan.id)]);
 
-    // Update user stats
-    setUser(prev => ({
-      ...prev,
-      stats: {
+    // Update user stats and sync to database if logged in
+    setUser(prev => {
+      const updatedStats = {
         ...prev.stats,
         scansCompleted: prev.stats.scansCompleted + 1,
         overallProgress: Math.min(98, prev.stats.overallProgress + 1),
-      },
-    }));
+      };
+      if (prev.isLoggedIn && prev.id) {
+        updatePatientProfile(prev.id, { stats: updatedStats }).catch(err => console.warn('Failed to sync stats to DB:', err));
+      }
+      return {
+        ...prev,
+        stats: updatedStats,
+      };
+    });
 
     showToast('New skin scan analyzed and recorded in your history!');
     return newScan;
@@ -436,37 +461,65 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   // Update profile state & Supabase 'profiles' table
-  const updateProfile = async (updates: Partial<UserProfile>) => {
+  const updateProfile = async (updates: Partial<UserProfile>): Promise<{ success: boolean; error?: string }> => {
     setUser(prev => ({ ...prev, ...updates }));
 
     if (user.isLoggedIn && user.id) {
       const res = await updatePatientProfile(user.id, updates);
       if (!res.success) {
         showToast(res.error || 'Failed to update profile in database.', 'info');
-        return;
+        return res;
+      }
+      // Re-fetch updated profile from Supabase database to refresh UI with verified data
+      const freshProfile = await getPatientProfile(user.id);
+      if (freshProfile) {
+        // Filter out undefined values so we never overwrite existing state with undefined
+        // (e.g. primaryConcerns, routine, stats, etc. that may not exist in the DB)
+        const safeProfile: Record<string, any> = {};
+        for (const [key, value] of Object.entries(freshProfile)) {
+          if (value !== undefined) {
+            safeProfile[key] = value;
+          }
+        }
+        setUser(prev => ({ ...prev, ...safeProfile }));
       }
     }
     showToast('Profile updated successfully!');
+    return { success: true };
   };
 
   const updateRoutine = (routine: UserProfile['routine']) => {
-    setUser(prev => ({ ...prev, routine }));
+    setUser(prev => {
+      const updated = { ...prev, routine };
+      if (prev.isLoggedIn && prev.id) {
+        updatePatientProfile(prev.id, { routine }).catch(err => console.warn('Failed to sync routine to DB:', err));
+      }
+      return updated;
+    });
     showToast('Ayurvedic skincare routine updated!');
   };
 
   const addSavedRemedy = (remedy: SavedRemedy) => {
-    setUser(prev => ({
-      ...prev,
-      savedRemedies: [...prev.savedRemedies, remedy],
-    }));
+    setUser(prev => {
+      const newRemedies = [...prev.savedRemedies, remedy];
+      const updated = { ...prev, savedRemedies: newRemedies };
+      if (prev.isLoggedIn && prev.id) {
+        updatePatientProfile(prev.id, { savedRemedies: newRemedies }).catch(err => console.warn('Failed to sync saved remedies to DB:', err));
+      }
+      return updated;
+    });
     showToast(`Saved "${remedy.title}" to your remedies!`);
   };
 
   const removeSavedRemedy = (id: string) => {
-    setUser(prev => ({
-      ...prev,
-      savedRemedies: prev.savedRemedies.filter(r => r.id !== id),
-    }));
+    setUser(prev => {
+      const newRemedies = prev.savedRemedies.filter(r => r.id !== id);
+      const updated = { ...prev, savedRemedies: newRemedies };
+      if (prev.isLoggedIn && prev.id) {
+        updatePatientProfile(prev.id, { savedRemedies: newRemedies }).catch(err => console.warn('Failed to sync saved remedies to DB:', err));
+      }
+      return updated;
+    });
     showToast('Remedy removed from saved list.', 'info');
   };
 

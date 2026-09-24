@@ -3,18 +3,22 @@ import { useApp } from '../context/AppContext';
 import { X, Check, Loader2 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { modalOverlayVariants, modalContentVariants } from '../utils/animations';
+import { calculateAgeFromDOB } from '../services/supabaseService';
 
 export const EditProfileModal: React.FC = () => {
   const { showEditProfileModal, setShowEditProfileModal, user, updateProfile } = useApp();
   const [isSaving, setIsSaving] = useState(false);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   const [formData, setFormData] = useState({
     name: user.name || '',
     email: user.email || '',
     dateOfBirth: user.dateOfBirth || '',
     gender: user.gender || 'Prefer not to say',
+    city: user.city || '',
+    country: user.country || 'India',
     phone: user.phone || '',
-    age: user.age || 25,
+    age: user.age || (user.dateOfBirth ? calculateAgeFromDOB(user.dateOfBirth) : 25),
     location: user.location || 'Mumbai, India',
     skinType: user.skinType || 'Combination',
     skinGoals: user.skinGoals || 'Clear, Glowing & Healthy',
@@ -23,14 +27,17 @@ export const EditProfileModal: React.FC = () => {
   });
 
   useEffect(() => {
+    setErrorMsg(null);
     setFormData({
       name: user.name || '',
       email: user.email || '',
       dateOfBirth: user.dateOfBirth || '',
       gender: user.gender || 'Prefer not to say',
+      city: user.city || '',
+      country: user.country || 'India',
       phone: user.phone || '',
-      age: user.age || 25,
-      location: user.location || 'Mumbai, India',
+      age: user.age || (user.dateOfBirth ? calculateAgeFromDOB(user.dateOfBirth) : 25),
+      location: user.location || (user.city && user.country ? `${user.city}, ${user.country}` : 'Mumbai, India'),
       skinType: user.skinType || 'Combination',
       skinGoals: user.skinGoals || 'Clear, Glowing & Healthy',
       sensitivity: user.sensitivity || 'Low',
@@ -50,24 +57,49 @@ export const EditProfileModal: React.FC = () => {
 
   if (!showEditProfileModal) return null;
 
+  const handleDobChange = (dob: string) => {
+    const calculatedAge = dob ? calculateAgeFromDOB(dob) : formData.age;
+    setFormData({
+      ...formData,
+      dateOfBirth: dob,
+      age: calculatedAge,
+    });
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setErrorMsg(null);
     setIsSaving(true);
+
     try {
-      await updateProfile({
+      const computedLocation = formData.city && formData.country
+        ? `${formData.city}, ${formData.country}`
+        : formData.location || formData.city || formData.country;
+
+      const res = await updateProfile({
         name: formData.name,
         email: formData.email,
         dateOfBirth: formData.dateOfBirth,
         gender: formData.gender,
+        city: formData.city,
+        country: formData.country,
         phone: formData.phone,
         age: Number(formData.age),
-        location: formData.location,
+        location: computedLocation,
         skinType: formData.skinType,
         skinGoals: formData.skinGoals,
         sensitivity: formData.sensitivity,
         currentCondition: formData.currentCondition,
       });
+
+      if (res && !res.success && res.error) {
+        setErrorMsg(res.error);
+        return;
+      }
+
       setShowEditProfileModal(false);
+    } catch (err: any) {
+      setErrorMsg(err.message || 'An unexpected error occurred while updating profile.');
     } finally {
       setIsSaving(false);
     }
@@ -112,6 +144,12 @@ export const EditProfileModal: React.FC = () => {
           </p>
         </div>
 
+        {errorMsg && (
+          <div className="mb-4 p-3 rounded-xl bg-red-50 border border-red-200 text-red-800 text-xs font-sans">
+            {errorMsg}
+          </div>
+        )}
+
         <form onSubmit={handleSubmit} className="space-y-4 text-xs text-[#4b4130]">
           {/* Identity Section */}
           <div className="bg-[#f5ede0]/60 p-3.5 rounded-2xl border border-[#e5d9c7] space-y-3">
@@ -147,7 +185,7 @@ export const EditProfileModal: React.FC = () => {
                 <input
                   type="date"
                   value={formData.dateOfBirth}
-                  onChange={(e) => setFormData({ ...formData, dateOfBirth: e.target.value })}
+                  onChange={(e) => handleDobChange(e.target.value)}
                   className="w-full bg-[#f4ecdf] border border-[#d3c4ad] rounded-xl px-3 py-2 text-xs text-[#3d3424] focus:outline-none focus:ring-1 focus:ring-[#495c27] focus:bg-[#faf5ec]"
                 />
               </div>
@@ -175,6 +213,38 @@ export const EditProfileModal: React.FC = () => {
                   onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
                   className="w-full bg-[#f4ecdf] border border-[#d3c4ad] rounded-xl px-3 py-2 text-xs text-[#3d3424] focus:outline-none focus:ring-1 focus:ring-[#495c27] focus:bg-[#faf5ec]"
                 />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="block font-semibold mb-1 text-[#3b3122]">City</label>
+                <input
+                  type="text"
+                  placeholder="e.g. Mumbai"
+                  value={formData.city}
+                  onChange={(e) => setFormData({ ...formData, city: e.target.value })}
+                  className="w-full bg-[#f4ecdf] border border-[#d3c4ad] rounded-xl px-3.5 py-2 text-xs text-[#3d3424] focus:outline-none focus:ring-1 focus:ring-[#495c27] focus:bg-[#faf5ec]"
+                />
+              </div>
+
+              <div>
+                <label className="block font-semibold mb-1 text-[#3b3122]">Country</label>
+                <select
+                  value={formData.country}
+                  onChange={(e) => setFormData({ ...formData, country: e.target.value })}
+                  className="w-full bg-[#f4ecdf] border border-[#d3c4ad] rounded-xl px-3 py-2 text-xs text-[#3d3424] focus:outline-none focus:ring-1 focus:ring-[#495c27] focus:bg-[#faf5ec]"
+                >
+                  <option value="India">India</option>
+                  <option value="United States">United States</option>
+                  <option value="United Kingdom">United Kingdom</option>
+                  <option value="Canada">Canada</option>
+                  <option value="Australia">Australia</option>
+                  <option value="Germany">Germany</option>
+                  <option value="France">France</option>
+                  <option value="United Arab Emirates">United Arab Emirates</option>
+                  <option value="Other">Other</option>
+                </select>
               </div>
             </div>
           </div>

@@ -37,6 +37,32 @@ export interface UserProfile {
   };
 }
 
+export interface DatabaseProfile {
+  id: string;
+  full_name?: string | null;
+  email?: string | null;
+  date_of_birth?: string | null;
+  age?: number | null;
+  gender?: string | null;
+  phone?: string | null;
+  city?: string | null;
+  country?: string | null;
+  location?: string | null;
+  skin_type?: string | null;
+  skin_goals?: string | null;
+  avatar_url?: string | null;
+  primary_concerns?: string[] | string | null;
+  sensitivity?: string | null;
+  sensitivity_description?: string | null;
+  current_condition?: string | null;
+  condition_description?: string | null;
+  routine?: any;
+  saved_remedies?: any;
+  stats?: any;
+  created_at?: string | null;
+  updated_at?: string | null;
+}
+
 export interface SavedRemedy {
   id: string;
   title: string;
