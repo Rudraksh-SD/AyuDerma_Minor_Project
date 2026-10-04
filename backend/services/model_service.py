@@ -1,9 +1,14 @@
 import os
 import json
+from pathlib import Path
 import numpy as np
 import tensorflow as tf
 from typing import Dict, Any, Tuple, List
-from backend.utils.image_processing import preprocess_image
+
+try:
+    from backend.utils.image_processing import preprocess_image
+except ImportError:
+    from utils.image_processing import preprocess_image
 
 class ModelService:
     def __init__(self):
@@ -21,27 +26,29 @@ class ModelService:
         if self._is_loaded:
             return
 
-        base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        base_dir = Path(__file__).resolve().parent.parent
 
-        # Candidate paths for model file
+        # Candidate paths for model file using pathlib
+        env_model_path = os.getenv("MODEL_PATH")
         candidate_model_paths = [
-            os.getenv("MODEL_PATH"),
-            os.path.join(base_dir, "model", "final_skin_disease_model.keras"),
-            os.path.join(base_dir, "final_skin_disease_model.keras"),
+            Path(env_model_path) if env_model_path else None,
+            base_dir / "final_skin_disease_model.keras",
+            base_dir / "model" / "final_skin_disease_model.keras",
         ]
 
         found_model_path = None
         for path in candidate_model_paths:
-            if path and os.path.exists(path):
+            if path and path.exists():
                 found_model_path = path
                 break
 
         if not found_model_path:
-            self.load_error = f"Model file not found in search paths: {candidate_model_paths}"
+            valid_paths_str = ", ".join(str(p) for p in candidate_model_paths if p is not None)
+            self.load_error = f"Model file not found in search paths: {valid_paths_str}"
             print(f"ERROR: {self.load_error}")
             return
 
-        self.model_path = found_model_path
+        self.model_path = str(found_model_path)
         print(f"Loading Keras model from: {self.model_path}")
 
         try:
@@ -53,16 +60,18 @@ class ModelService:
             print(f"ERROR: {self.load_error}")
             return
 
-        # Candidate paths for class_names / class_indices file
+        # Candidate paths for class_names / class_indices file using pathlib
+        env_class_path = os.getenv("CLASS_NAMES_PATH")
         candidate_class_paths = [
-            os.getenv("CLASS_NAMES_PATH"),
-            os.path.join(base_dir, "model", "class_names.json"),
-            os.path.join(base_dir, "class_indices.json"),
+            Path(env_class_path) if env_class_path else None,
+            base_dir / "model" / "class_names.json",
+            base_dir / "class_indices.json",
+            base_dir / "class_names.json",
         ]
 
         found_class_path = None
         for path in candidate_class_paths:
-            if path and os.path.exists(path):
+            if path and path.exists():
                 found_class_path = path
                 break
 

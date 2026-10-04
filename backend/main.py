@@ -1,31 +1,56 @@
 import os
 import sys
+from pathlib import Path
 from contextlib import asynccontextmanager
 from typing import List, Optional
 from fastapi import FastAPI, File, UploadFile, HTTPException, Form, Query, Request, Header
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
 
-# Ensure backend directory is in python path
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+BASE_DIR = Path(__file__).resolve().parent
+ROOT_DIR = BASE_DIR.parent
 
-from backend.services.model_service import model_service
-from backend.services.supabase_service import (
-    fetch_disease_data,
-    is_database_configured,
-    save_scan_record_to_supabase,
-    get_user_progress_data
-)
-from backend.schemas.response_models import (
-    PredictResponse,
-    HealthResponse,
-    PredictionDetail,
-    TopPrediction,
-    DiseaseInfo,
-    AyurvedicRecommendation,
-    DietRecommendation,
-    ProgressResponse
-)
+if str(ROOT_DIR) not in sys.path:
+    sys.path.insert(0, str(ROOT_DIR))
+if str(BASE_DIR) not in sys.path:
+    sys.path.insert(0, str(BASE_DIR))
+
+try:
+    from backend.services.model_service import model_service
+    from backend.services.supabase_service import (
+        fetch_disease_data,
+        is_database_configured,
+        save_scan_record_to_supabase,
+        get_user_progress_data
+    )
+    from backend.schemas.response_models import (
+        PredictResponse,
+        HealthResponse,
+        PredictionDetail,
+        TopPrediction,
+        DiseaseInfo,
+        AyurvedicRecommendation,
+        DietRecommendation,
+        ProgressResponse
+    )
+except ImportError:
+    from services.model_service import model_service
+    from services.supabase_service import (
+        fetch_disease_data,
+        is_database_configured,
+        save_scan_record_to_supabase,
+        get_user_progress_data
+    )
+    from schemas.response_models import (
+        PredictResponse,
+        HealthResponse,
+        PredictionDetail,
+        TopPrediction,
+        DiseaseInfo,
+        AyurvedicRecommendation,
+        DietRecommendation,
+        ProgressResponse
+    )
 
 load_dotenv()
 
@@ -59,8 +84,11 @@ allowed_origins = [
     "http://localhost:3001",
     "http://127.0.0.1:3001"
 ]
-if frontend_url and frontend_url not in allowed_origins:
-    allowed_origins.append(frontend_url)
+if frontend_url:
+    for url in frontend_url.split(","):
+        cleaned_url = url.strip()
+        if cleaned_url and cleaned_url not in allowed_origins:
+            allowed_origins.append(cleaned_url)
 
 app.add_middleware(
     CORSMiddleware,
@@ -249,4 +277,5 @@ async def get_progress(
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run("backend.main:app", host="0.0.0.0", port=8000, reload=True)
+    port = int(os.getenv("PORT", 8000))
+    uvicorn.run("main:app", host="0.0.0.0", port=port, reload=True)
