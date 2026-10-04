@@ -1,7 +1,8 @@
 import { supabase } from '../lib/supabase';
 import { DiseaseSearchRecord, UserProfile } from '../types';
 
-const FASTAPI_URL = import.meta.env.VITE_FASTAPI_URL || import.meta.env.VITE_BACKEND_URL || 'https://backend-api-frvh.onrender.com';
+const FASTAPI_URL = import.meta.env.VITE_API_URL || import.meta.env.VITE_FASTAPI_URL || import.meta.env.VITE_BACKEND_URL || 'https://backend-api-frvh.onrender.com';
+
 
 
 /**
