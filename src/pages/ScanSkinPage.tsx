@@ -179,11 +179,12 @@ export const ScanSkinPage: React.FC = () => {
         ayurvedic_remedy: prediction.ayurvedic_remedy,
         diet_recommendation: prediction.diet_recommendation,
       });
-    } catch (err) {
+    } catch (err: any) {
       console.error('Analysis flow error:', err);
       setIsScanning(false);
-      setScanStep('complete');
-      showToast('Completed skin analysis.', 'info');
+      setScanStep('idle');
+      const errorMsg = err?.message || 'Skin analysis service is currently unavailable. Please try again.';
+      showToast(errorMsg, 'info');
     }
   };
 
@@ -373,7 +374,7 @@ export const ScanSkinPage: React.FC = () => {
               <input
                 ref={fileInputRef}
                 type="file"
-                accept="image/jpeg,image/png"
+                accept="image/jpeg,image/png,image/webp"
                 onChange={handleFileUpload}
                 className="hidden"
               />

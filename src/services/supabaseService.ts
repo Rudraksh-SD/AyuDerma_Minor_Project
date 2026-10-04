@@ -308,6 +308,19 @@ export async function uploadSkinImage(fileOrBlob: File | Blob, userId: string, o
   }
 }
 
+function dataURLtoBlob(dataurl: string): Blob {
+  const arr = dataurl.split(',');
+  const mimeMatch = arr[0].match(/:(.*?);/);
+  const mime = mimeMatch ? mimeMatch[1] : 'image/jpeg';
+  const bstr = atob(arr[1]);
+  let n = bstr.length;
+  const u8arr = new Uint8Array(n);
+  while (n--) {
+    u8arr[n] = bstr.charCodeAt(n);
+  }
+  return new Blob([u8arr], { type: mime });
+}
+
 /**
  * Execute FastAPI prediction endpoint or fallback ML model prediction
  */
@@ -329,9 +342,23 @@ export async function predictWithFastAPI(imageInput: File | Blob | string, userI
   diet_recommendations?: any[];
 }> {
   try {
-    if (typeof imageInput !== 'string') {
+    let fileToUpload: File | Blob | null = null;
+
+    if (imageInput instanceof File || imageInput instanceof Blob) {
+      fileToUpload = imageInput;
+    } else if (typeof imageInput === 'string' && imageInput.startsWith('data:')) {
+      fileToUpload = dataURLtoBlob(imageInput);
+    }
+
+    if (fileToUpload) {
+      console.log("Backend URL:", FASTAPI_URL);
+      console.log("Sending image to ML backend");
+      console.log("Selected file/blob:", fileToUpload);
+      console.log("File type:", fileToUpload.type);
+      console.log("File size:", fileToUpload.size);
+
       const formData = new FormData();
-      formData.append('file', imageInput, 'skin_sample.jpg');
+      formData.append('file', fileToUpload, 'skin_sample.jpg');
       if (userId) {
         formData.append('user_id', userId);
       }
@@ -347,9 +374,12 @@ export async function predictWithFastAPI(imageInput: File | Blob | string, userI
         body: formData,
       });
 
+      console.log("ML backend status:", response.status);
+
       if (response.ok) {
         const json = await response.json();
-        
+        console.log("ML backend response:", json);
+
         // Extract disease name
         const diseaseName = json.prediction?.disease || json.predicted_disease || json.disease || json.label || 'Normal Skin';
         
@@ -407,11 +437,14 @@ export async function predictWithFastAPI(imageInput: File | Blob | string, userI
         };
       } else {
         const errorJson = await response.json().catch(() => ({}));
-        throw new Error(errorJson.detail || `FastAPI server returned status ${response.status}`);
+        console.error("ML backend error response:", response.status, errorJson);
+        throw new Error(errorJson.detail || errorJson.message || `FastAPI server returned status ${response.status}`);
       }
+    } else {
+      console.warn("No valid File, Blob, or DataURL provided for image input.");
     }
   } catch (err: any) {
-    console.warn('FastAPI prediction endpoint unreachable or returned error. Details:', err);
+    console.error('FastAPI prediction endpoint error details:', err);
     throw err;
   }
 
@@ -427,6 +460,7 @@ export async function predictWithFastAPI(imageInput: File | Blob | string, userI
     recommendedRoutine: ['Gentle Neem Cleanser', 'Rose Hydrosol', 'Kumkumadi Glow Elixir'],
   };
 }
+
 
 export interface ProgressApiResponse {
   success: boolean;
