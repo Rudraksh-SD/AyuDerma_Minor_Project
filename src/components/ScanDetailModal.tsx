@@ -1,12 +1,14 @@
-import React, { useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import { IMAGES } from '../data/initialData';
-import { X, Calendar, Clock, Activity, CheckCircle, Trash2, Leaf, Shield } from 'lucide-react';
+import { X, Calendar, Clock, Activity, CheckCircle, Trash2, Leaf, Shield, Pill } from 'lucide-react';
 import { motion } from 'motion/react';
 import { modalOverlayVariants, modalContentVariants } from '../utils/animations';
+import { RemediesModal } from './RemediesModal';
 
 export const ScanDetailModal: React.FC = () => {
   const { selectedScan, setSelectedScan, setShowRecommendationsModal, deleteScan } = useApp();
+  const [showRemedies, setShowRemedies] = useState(false);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -128,28 +130,62 @@ export const ScanDetailModal: React.FC = () => {
           </div>
         )}
 
-        {/* Ayurvedic & Diet Recommendations */}
-        <div className="bg-[#f2e7d7] border border-[#dacdb9] rounded-2xl p-4 mb-5 shadow-xs space-y-3">
-          <div>
-            <h4 className="text-xs font-semibold text-[#443827] uppercase tracking-wider mb-1 flex items-center gap-1.5">
-              <Leaf className="w-3.5 h-3.5 text-[#495c27]" />
-              <span>Ayurvedic Herbal Recommendation</span>
-            </h4>
-            <p className="text-xs text-[#3d3324]">
-              {selectedScan.ayurvedic_remedy || selectedScan.recommendedRoutine.join(', ')}
-            </p>
-          </div>
+        {/* Ayurvedic & Diet Recommendations / Normal Skin Check */}
+        {(() => {
+          const concern = (selectedScan.primaryConcern || '').toLowerCase();
+          const remedy = (selectedScan.ayurvedic_remedy || '').trim();
+          const isNormal = concern.includes('normal') || concern.includes('healthy') || concern.includes('clear') || (!remedy || remedy.toLowerCase().includes('no remedy') || remedy.toLowerCase().includes('no medication'));
 
-          {selectedScan.diet_recommendation && (
-            <div className="pt-2 border-t border-[#e2d5c1]">
-              <h4 className="text-xs font-semibold text-[#443827] uppercase tracking-wider mb-1 flex items-center gap-1.5">
-                <Shield className="w-3.5 h-3.5 text-[#495c27]" />
-                <span>Dietary Recommendation</span>
-              </h4>
-              <p className="text-xs text-[#3d3324]">{selectedScan.diet_recommendation}</p>
+          if (isNormal) {
+            return (
+              <div className="bg-[#eef6ec] border border-[#b8e0b2] rounded-2xl p-4 mb-5 text-center shadow-xs flex flex-col items-center justify-center gap-1.5 font-sans">
+                <div className="w-7 h-7 rounded-full bg-[#495c27] text-white flex items-center justify-center">
+                  <CheckCircle className="w-4 h-4" />
+                </div>
+                <h4 className="font-serif-title font-bold text-[#2c3817] text-base">
+                  Normal &amp; Healthy Skin
+                </h4>
+                <p className="text-xs text-[#495c27] font-semibold">
+                  Skin is normal/healthy. No remedies or medication required.
+                </p>
+              </div>
+            );
+          }
+
+          return (
+            <div className="bg-[#f2e7d7] border border-[#dacdb9] rounded-2xl p-4 mb-5 shadow-xs space-y-3">
+              <div>
+                <h4 className="text-xs font-semibold text-[#443827] uppercase tracking-wider mb-1 flex items-center gap-1.5">
+                  <Leaf className="w-3.5 h-3.5 text-[#495c27]" />
+                  <span>Ayurvedic Herbal Recommendation</span>
+                </h4>
+                <p className="text-xs text-[#3d3324]">
+                  {selectedScan.ayurvedic_remedy || selectedScan.recommendedRoutine.join(', ')}
+                </p>
+              </div>
+
+              {selectedScan.diet_recommendation && (
+                <div className="pt-2 border-t border-[#e2d5c1]">
+                  <h4 className="text-xs font-semibold text-[#443827] uppercase tracking-wider mb-1 flex items-center gap-1.5">
+                    <Shield className="w-3.5 h-3.5 text-[#495c27]" />
+                    <span>Dietary Recommendation</span>
+                  </h4>
+                  <p className="text-xs text-[#3d3324]">{selectedScan.diet_recommendation}</p>
+                </div>
+              )}
+
+              <div className="pt-2 border-t border-[#e2d5c1] flex justify-end">
+                <button
+                  onClick={() => setShowRemedies(true)}
+                  className="bg-[#495c27] hover:bg-[#3d4d1f] text-white px-4 py-2 rounded-full text-xs font-semibold flex items-center gap-1.5 shadow-2xs transition-all focus:outline-none"
+                >
+                  <Pill className="w-3.5 h-3.5" />
+                  <span>Show Remedies / Medicines</span>
+                </button>
+              </div>
             </div>
-          )}
-        </div>
+          );
+        })()}
 
         {/* Factors breakdown */}
         {selectedScan.factors && (
@@ -209,6 +245,14 @@ export const ScanDetailModal: React.FC = () => {
             </button>
           </div>
         </div>
+        {/* Remedies Modal */}
+        <RemediesModal
+          isOpen={showRemedies}
+          onClose={() => setShowRemedies(false)}
+          condition={selectedScan.primaryConcern}
+          remedyText={selectedScan.ayurvedic_remedy}
+          dietText={selectedScan.diet_recommendation}
+        />
       </motion.div>
     </motion.div>
   );

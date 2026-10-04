@@ -1,10 +1,11 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import { IMAGES } from '../data/initialData';
-import { Camera, Upload, Shield, Leaf, Scan, CheckCircle, RefreshCw, Loader2, Sparkles, AlertTriangle } from 'lucide-react';
+import { Camera, Upload, Shield, Leaf, Scan, CheckCircle, RefreshCw, Loader2, Sparkles, AlertTriangle, Pill } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { fadeUpVariants, cardHoverProps } from '../utils/animations';
 import { predictWithFastAPI, uploadSkinImage } from '../services/supabaseService';
+import { RemediesModal } from '../components/RemediesModal';
 
 export const ScanSkinPage: React.FC = () => {
   const { user, addScan, setShowRecommendationsModal, showToast } = useApp();
@@ -16,6 +17,7 @@ export const ScanSkinPage: React.FC = () => {
   const [analysisText, setAnalysisText] = useState('Analyzing image...');
   const [isCameraActive, setIsCameraActive] = useState(false);
   const [storageWarning, setStorageWarning] = useState<string | null>(null);
+  const [showRemedies, setShowRemedies] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -35,6 +37,8 @@ export const ScanSkinPage: React.FC = () => {
     probableCause: '',
     ayurvedicRemedy: '',
     dietRecommendation: '',
+    ayurvedicRecommendations: undefined as any[] | undefined,
+    dietRecommendations: undefined as any[] | undefined,
   });
 
   // Handle webcam
@@ -158,6 +162,8 @@ export const ScanSkinPage: React.FC = () => {
         probableCause: prediction.probable_cause,
         ayurvedicRemedy: prediction.ayurvedic_remedy,
         dietRecommendation: prediction.diet_recommendation,
+        ayurvedicRecommendations: prediction.ayurvedic_recommendations,
+        dietRecommendations: prediction.diet_recommendations,
       };
 
       setAnalysisResult(updatedResults);
@@ -518,15 +524,62 @@ export const ScanSkinPage: React.FC = () => {
             </motion.div>
           </div>
 
-          {/* Button: View Ayurvedic Recommendations */}
-          <button
-            id="btn-view-recommendations"
-            onClick={() => setShowRecommendationsModal(true)}
-            className="w-full bg-[#495c27] hover:bg-[#3d4d1f] text-white py-3.5 px-6 rounded-full font-sans text-sm sm:text-base font-semibold shadow-[0_4px_14px_rgba(73,92,39,0.25)] transition-all flex items-center justify-center gap-2 hover:scale-[1.01] active:scale-[0.99] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#495c27]"
-          >
-            <span>View Ayurvedic Recommendations</span>
-            <span>🍃</span>
-          </button>
+          {/* Condition Check for Normal / Healthy Skin */}
+          {(() => {
+            const concern = (analysisResult.skinConcern || '').toLowerCase();
+            const remedy = (analysisResult.ayurvedicRemedy || '').trim();
+            const isNormal = concern.includes('normal') || concern.includes('healthy') || concern.includes('clear') || (!remedy || remedy.toLowerCase().includes('no remedy') || remedy.toLowerCase().includes('no medication'));
+
+            if (isNormal) {
+              return (
+                <div className="w-full bg-[#eef6ec] border border-[#b8e0b2] rounded-2xl p-4 text-center shadow-xs flex flex-col items-center justify-center gap-1.5 my-1 font-sans">
+                  <div className="w-7 h-7 rounded-full bg-[#495c27] text-white flex items-center justify-center">
+                    <CheckCircle className="w-4 h-4" />
+                  </div>
+                  <h4 className="font-serif-title font-bold text-[#2c3817] text-base">
+                    Normal &amp; Healthy Skin Detected
+                  </h4>
+                  <p className="text-xs text-[#495c27] font-semibold">
+                    Skin is normal/healthy. No remedies or medication required.
+                  </p>
+                </div>
+              );
+            }
+
+            return (
+              <div className="w-full space-y-2.5">
+                {/* Button: Show Remedies / Medicines */}
+                <button
+                  id="btn-show-remedies"
+                  onClick={() => setShowRemedies(true)}
+                  className="w-full bg-[#495c27] hover:bg-[#3d4d1f] text-white py-3.5 px-6 rounded-full font-sans text-sm sm:text-base font-semibold shadow-[0_4px_14px_rgba(73,92,39,0.25)] transition-all flex items-center justify-center gap-2 hover:scale-[1.01] active:scale-[0.99] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#495c27]"
+                >
+                  <Pill className="w-4 h-4" />
+                  <span>Show Remedies / Medicines</span>
+                </button>
+
+                <button
+                  id="btn-view-recommendations"
+                  onClick={() => setShowRecommendationsModal(true)}
+                  className="w-full bg-[#faf5ec] hover:bg-[#f2e7d7] text-[#495c27] border border-[#495c27] py-2.5 px-5 rounded-full font-sans text-xs font-semibold shadow-2xs transition-all flex items-center justify-center gap-1.5 focus:outline-none"
+                >
+                  <span>View Full Ayurvedic Regimen</span>
+                  <span>🍃</span>
+                </button>
+              </div>
+            );
+          })()}
+
+          {/* Interactive Modal for Remedies / Medicines */}
+          <RemediesModal
+            isOpen={showRemedies}
+            onClose={() => setShowRemedies(false)}
+            condition={analysisResult.skinConcern}
+            remedyText={analysisResult.ayurvedicRemedy}
+            dietText={analysisResult.dietRecommendation}
+            remediesArray={analysisResult.ayurvedicRecommendations}
+            dietArray={analysisResult.dietRecommendations}
+          />
 
           {/* Disclaimer */}
           <div className="flex items-start gap-2 text-[11px] text-[#786c5a] pt-1 leading-normal font-sans">
