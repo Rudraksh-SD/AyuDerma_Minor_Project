@@ -1,8 +1,8 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { PageType, UserProfile, SkinScan, SavedRemedy, ProgressDataPoint, DiseaseSearchRecord } from '../types';
 import { INITIAL_USER, INITIAL_SCANS, WEEKLY_PROGRESS_DATA, MONTHLY_PROGRESS_DATA } from '../data/initialData';
 import { supabase } from '../lib/supabase';
-import { getPatientProfile, updatePatientProfile, getDiseaseSearches, deleteDiseaseSearchRecord, saveDiseaseSearch } from '../services/supabaseService';
+import { getPatientProfile, updatePatientProfile, getDiseaseSearches, deleteDiseaseSearchRecord, saveDiseaseSearch, fetchProgressData, ProgressApiResponse } from '../services/supabaseService';
 
 interface AppContextType {
   activePage: PageType;
@@ -18,6 +18,9 @@ interface AppContextType {
   setSelectedScan: (scan: SkinScan | null) => void;
   weeklyProgress: ProgressDataPoint[];
   monthlyProgress: ProgressDataPoint[];
+  progressData: ProgressApiResponse | null;
+  progressLoading: boolean;
+  refreshProgress: () => Promise<void>;
   updateProfile: (updates: Partial<UserProfile>) => Promise<{ success: boolean; error?: string }>;
   updateRoutine: (routine: UserProfile['routine']) => void;
   addSavedRemedy: (remedy: SavedRemedy) => void;
@@ -35,6 +38,7 @@ interface AppContextType {
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
+
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [activePage, setActivePageState] = useState<PageType>('home');
@@ -61,10 +65,32 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [monthlyProgress, setMonthlyProgress] = useState<ProgressDataPoint[]>(MONTHLY_PROGRESS_DATA);
   const [selectedScan, setSelectedScan] = useState<SkinScan | null>(null);
 
+  const [progressData, setProgressData] = useState<ProgressApiResponse | null>(null);
+  const [progressLoading, setProgressLoading] = useState<boolean>(false);
+
   const [showRecommendationsModal, setShowRecommendationsModal] = useState(false);
   const [showEditProfileModal, setShowEditProfileModal] = useState(false);
   const [showAddRemedyModal, setShowAddRemedyModal] = useState(false);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'info' } | null>(null);
+
+  const refreshProgress = useCallback(async () => {
+    const userIdToUse = user.id || 'user_demo';
+    setProgressLoading(true);
+    try {
+      const data = await fetchProgressData(userIdToUse);
+      if (data) {
+        setProgressData(data);
+      }
+    } catch (err) {
+      console.error('Failed to fetch progress data:', err);
+    } finally {
+      setProgressLoading(false);
+    }
+  }, [user.id]);
+
+  useEffect(() => {
+    refreshProgress();
+  }, [user.id, refreshProgress]);
 
   // Sync state to local cache
   useEffect(() => {
@@ -89,6 +115,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       setToast(null);
     }, 4000);
   };
+
 
   // Route Protection: Unauthenticated user -> redirect to login for protected pages
   const setActivePage = (page: PageType) => {
@@ -447,6 +474,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       };
     });
 
+    // Refresh progress data from FastAPI /progress
+    await refreshProgress();
+
     showToast('New skin scan analyzed and recorded in your history!');
     return newScan;
   };
@@ -457,6 +487,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       await deleteDiseaseSearchRecord(id, user.id);
     }
     setScans(prev => prev.filter(s => s.id !== id));
+    await refreshProgress();
     showToast('Scan history record deleted.', 'info');
   };
 
@@ -539,6 +570,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setSelectedScan,
         weeklyProgress,
         monthlyProgress,
+        progressData,
+        progressLoading,
+        refreshProgress,
         updateProfile,
         updateRoutine,
         addSavedRemedy,

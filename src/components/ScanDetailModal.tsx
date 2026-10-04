@@ -1,5 +1,6 @@
 import React, { useEffect } from 'react';
 import { useApp } from '../context/AppContext';
+import { IMAGES } from '../data/initialData';
 import { X, Calendar, Clock, Activity, CheckCircle, Trash2, Leaf, Shield } from 'lucide-react';
 import { motion } from 'motion/react';
 import { modalOverlayVariants, modalContentVariants } from '../utils/animations';
@@ -57,9 +58,12 @@ export const ScanDetailModal: React.FC = () => {
 
         <div className="flex items-center gap-4 mb-6">
           <img
-            src={selectedScan.thumbnailUrl}
+            src={selectedScan.thumbnailUrl || IMAGES.skinBefore}
             alt="Skin scan capture"
             referrerPolicy="no-referrer"
+            onError={(e) => {
+              (e.target as HTMLImageElement).src = IMAGES.skinBefore;
+            }}
             className="w-20 h-20 rounded-2xl object-cover border border-[#d8ccb8] shadow-xs flex-shrink-0"
           />
           <div>

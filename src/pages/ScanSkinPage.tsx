@@ -128,8 +128,9 @@ export const ScanSkinPage: React.FC = () => {
     setAnalysisText('Uploading & analyzing image via FastAPI backend...');
 
     try {
-      // Step 1: Call FastAPI prediction endpoint (or fallback)
-      const prediction = await predictWithFastAPI(imgFile || dataUrl);
+      // Step 1: Call FastAPI prediction endpoint & save scan to Supabase skin-scans bucket/table
+      const userId = user.id || 'user_demo';
+      const prediction = await predictWithFastAPI(imgFile || dataUrl, userId);
 
       setAnalysisText('Evaluating Pitta-Kapha dosha & symptoms...');
       await new Promise((r) => setTimeout(r, 600));
@@ -137,20 +138,7 @@ export const ScanSkinPage: React.FC = () => {
       setAnalysisText('Preparing Ayurvedic wellness & dietary recommendations...');
       await new Promise((r) => setTimeout(r, 600));
 
-      let finalImageUrl = dataUrl;
-
-      // Step 2: If user is authenticated, upload to Supabase Storage 'skin-images' bucket
-      if (user.isLoggedIn && user.id && imgFile) {
-        setAnalysisText('Saving scan to Supabase Storage & Database...');
-        const uploadRes = await uploadSkinImage(imgFile, user.id, 'patient_scan.jpg');
-
-        if (uploadRes.bucketMissing) {
-          setStorageWarning(uploadRes.error);
-          showToast(uploadRes.error!, 'info');
-        } else if (uploadRes.url) {
-          finalImageUrl = uploadRes.url;
-        }
-      }
+      const finalImageUrl = prediction.image_url || dataUrl;
 
       setIsScanning(false);
       setScanStep('complete');
@@ -174,27 +162,23 @@ export const ScanSkinPage: React.FC = () => {
 
       setAnalysisResult(updatedResults);
 
-      // Step 3: Save to Supabase 'disease_searches' table if authenticated
-      if (user.isLoggedIn) {
-        await addScan({
-          skinScore: prediction.skinScore || 84,
-          skinType: prediction.skinType || 'Combination',
-          primaryConcern: prediction.predicted_disease || 'Mild Acne',
-          concerns: [prediction.predicted_disease],
-          severity: 'Mild',
-          severityLevel: 'Level: Low to Moderate',
-          confidence: prediction.confidence || '94%',
-          accuracy: 'High Accuracy',
-          recommendedRoutine: prediction.recommendedRoutine || ['Neem Face Wash', 'Aloe Vera Gel'],
-          thumbnailUrl: finalImageUrl,
-          symptoms: prediction.symptoms,
-          probable_cause: prediction.probable_cause,
-          ayurvedic_remedy: prediction.ayurvedic_remedy,
-          diet_recommendation: prediction.diet_recommendation,
-        });
-      } else {
-        showToast('Sign in to automatically save skin scan history to your profile.', 'info');
-      }
+      // Step 2: Record scan in context (updates local scan state & triggers progress refresh)
+      await addScan({
+        skinScore: prediction.skinScore || 84,
+        skinType: prediction.skinType || 'Combination',
+        primaryConcern: prediction.predicted_disease || 'Mild Acne',
+        concerns: [prediction.predicted_disease],
+        severity: 'Mild',
+        severityLevel: 'Level: Low to Moderate',
+        confidence: prediction.confidence || '94%',
+        accuracy: 'High Accuracy',
+        recommendedRoutine: prediction.recommendedRoutine || ['Neem Face Wash', 'Aloe Vera Gel'],
+        thumbnailUrl: finalImageUrl,
+        symptoms: prediction.symptoms,
+        probable_cause: prediction.probable_cause,
+        ayurvedic_remedy: prediction.ayurvedic_remedy,
+        diet_recommendation: prediction.diet_recommendation,
+      });
     } catch (err) {
       console.error('Analysis flow error:', err);
       setIsScanning(false);

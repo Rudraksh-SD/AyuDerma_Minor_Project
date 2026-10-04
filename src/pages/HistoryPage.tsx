@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
+import { IMAGES } from '../data/initialData';
 import { Search, Filter, Leaf, ChevronRight, ShieldCheck, Trash2, Loader2, Calendar } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { fadeUpVariants, cardHoverProps } from '../utils/animations';
@@ -169,9 +170,12 @@ export const HistoryPage: React.FC = () => {
                     {/* Skin Thumbnail */}
                     <div className="md:col-span-2 flex justify-start md:justify-center">
                       <img
-                        src={scan.thumbnailUrl}
+                        src={scan.thumbnailUrl || IMAGES.skinBefore}
                         alt="Uploaded skin scan"
                         referrerPolicy="no-referrer"
+                        onError={(e) => {
+                          (e.target as HTMLImageElement).src = IMAGES.skinBefore;
+                        }}
                         className="w-18 h-18 sm:w-20 sm:h-20 rounded-2xl object-cover border border-[#d8cdbc] shadow-2xs group-hover:scale-105 transition-transform"
                       />
                     </div>
