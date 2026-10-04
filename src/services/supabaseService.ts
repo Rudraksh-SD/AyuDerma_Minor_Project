@@ -1,7 +1,8 @@
 import { supabase } from '../lib/supabase';
 import { DiseaseSearchRecord, UserProfile } from '../types';
 
-const FASTAPI_URL = import.meta.env.VITE_FASTAPI_URL || 'http://localhost:8000';
+const FASTAPI_URL = import.meta.env.VITE_FASTAPI_URL || import.meta.env.VITE_BACKEND_URL || 'https://backend-api-frvh.onrender.com';
+
 
 /**
  * Helper to calculate age from date of birth
