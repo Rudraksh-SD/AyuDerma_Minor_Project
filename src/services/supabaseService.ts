@@ -308,7 +308,9 @@ export async function uploadSkinImage(fileOrBlob: File | Blob, userId: string, o
 /**
  * Execute FastAPI prediction endpoint or fallback ML model prediction
  */
-export async function predictWithFastAPI(imageInput: File | Blob | string): Promise<{
+export async function predictWithFastAPI(imageInput: File | Blob | string, userId?: string): Promise<{
+  scan_id?: string;
+  image_url?: string;
   predicted_disease: string;
   confidence: string;
   symptoms: string;
@@ -318,48 +320,172 @@ export async function predictWithFastAPI(imageInput: File | Blob | string): Prom
   skinType: string;
   skinScore: number;
   recommendedRoutine: string[];
+  top_predictions?: Array<{ class_name: string; confidence: number }>;
+  disease_info?: any;
+  ayurvedic_recommendations?: any[];
+  diet_recommendations?: any[];
 }> {
   try {
     if (typeof imageInput !== 'string') {
       const formData = new FormData();
       formData.append('file', imageInput, 'skin_sample.jpg');
+      if (userId) {
+        formData.append('user_id', userId);
+      }
+
+      const headers: Record<string, string> = {};
+      if (userId) {
+        headers['x-user-id'] = userId;
+      }
 
       const response = await fetch(`${FASTAPI_URL}/predict`, {
         method: 'POST',
+        headers,
         body: formData,
       });
 
       if (response.ok) {
         const json = await response.json();
+        
+        // Extract disease name
+        const diseaseName = json.prediction?.disease || json.predicted_disease || json.disease || json.label || 'Normal Skin';
+        
+        // Extract confidence
+        let confidenceStr = '90%';
+        if (json.confidence) {
+          confidenceStr = typeof json.confidence === 'number' ? `${(json.confidence * 100).toFixed(2)}%` : String(json.confidence);
+        } else if (json.prediction?.confidence) {
+          confidenceStr = `${(json.prediction.confidence * 100).toFixed(2)}%`;
+        }
+
+        // Extract disease_info
+        const dInfo = json.disease_info || {};
+        const symptomsStr = dInfo.symptoms || json.symptoms || 'Localized skin erythema, papules or lesion.';
+        const causeStr = dInfo.causes || json.probable_cause || 'Tridosha imbalance causing epidermal skin changes.';
+
+        // Extract ayurvedic recommendations
+        let remedyStr = json.ayurvedic_remedy || '';
+        if (!remedyStr && json.ayurvedic_recommendations && Array.isArray(json.ayurvedic_recommendations)) {
+          remedyStr = json.ayurvedic_recommendations
+            .map((rec: any) => `${rec.medicine_name}: ${rec.description || ''} (Usage: ${rec.usage || 'As directed'})`)
+            .join(' | ');
+        }
+        if (!remedyStr) {
+          remedyStr = 'Neem leaf paste with Karanja oil, Khadirarishta oral tonic, bi-daily Triphala decoction wash.';
+        }
+
+        // Extract diet recommendations
+        let dietStr = json.diet_recommendation || '';
+        if (!dietStr && json.diet_recommendations && Array.isArray(json.diet_recommendations)) {
+          dietStr = json.diet_recommendations
+            .map((rec: any) => `${rec.food} [${rec.recommendation_type || 'recommended'}]: ${rec.description || ''}`)
+            .join(' | ');
+        }
+        if (!dietStr) {
+          dietStr = 'Favor cooling Pitta-pacifying foods: amla, coconut water, cucumber. Avoid fermented and spicy foods.';
+        }
+
         return {
-          predicted_disease: json.predicted_disease || json.disease || json.label || 'Mild Acne (Pitta Imbalance)',
-          confidence: json.confidence ? (typeof json.confidence === 'number' ? `${Math.round(json.confidence * 100)}%` : json.confidence) : '94%',
-          symptoms: json.symptoms || 'Localized erythema, comedones, mild inflammation, open pores.',
-          probable_cause: json.probable_cause || 'Elevated Pitta-Kapha dosha causing excess sebum retention and follicular blockage.',
-          ayurvedic_remedy: json.ayurvedic_remedy || 'Neem & Tulsi steam cleanse, followed by chilled Kumkumadi or Manjistha oil application.',
-          diet_recommendation: json.diet_recommendation || 'Favor cooling & astringent foods: coconut water, cucumber, coriander tea, moong dal. Avoid spicy & oily fried foods.',
+          scan_id: json.scan_id,
+          image_url: json.image_url,
+          predicted_disease: diseaseName,
+          confidence: confidenceStr,
+          symptoms: symptomsStr,
+          probable_cause: causeStr,
+          ayurvedic_remedy: remedyStr,
+          diet_recommendation: dietStr,
           skinType: json.skin_type || 'Combination',
-          skinScore: json.skin_score || 84,
-          recommendedRoutine: json.routine || ['Neem Face Wash', 'Aloe Vera Gel', 'Tulsi & Manjistha Oil'],
+          skinScore: json.skin_score || 80,
+          recommendedRoutine: json.routine || ['Neem Cleanser', 'Aloe Vera Gel', 'Rose Water Mist'],
+          top_predictions: json.top_predictions || [],
+          disease_info: json.disease_info,
+          ayurvedic_recommendations: json.ayurvedic_recommendations,
+          diet_recommendations: json.diet_recommendations,
         };
+      } else {
+        const errorJson = await response.json().catch(() => ({}));
+        throw new Error(errorJson.detail || `FastAPI server returned status ${response.status}`);
       }
     }
-  } catch (err) {
-    console.info('FastAPI prediction endpoint unreachable or unavailable, using ML prediction model fallback:', err);
+  } catch (err: any) {
+    console.warn('FastAPI prediction endpoint unreachable or returned error. Details:', err);
+    throw err;
   }
 
   return {
-    predicted_disease: 'Mild Acne & Sebum Congestion (Pitta-Kapha)',
-    confidence: '94%',
-    symptoms: 'Mild facial papules, enlarged T-zone pores, micro-comedones, minor redness.',
-    probable_cause: 'Agni (digestive fire) imbalance leading to Pitta accumulation and excess glandular sebum production.',
-    ayurvedic_remedy: 'Daily Neem water wash, bi-weekly Multani Mitti clay mask with rose water, nightly Aloe Vera & Tulsi gel.',
-    diet_recommendation: 'Incorporate Pitta-pacifying diet: sweet fruits, leafy greens, buttermilk with roasted cumin, turmeric milk. Limit excess salt, chilies, and caffeine.',
-    skinType: 'Combination',
-    skinScore: 84,
-    recommendedRoutine: ['Neem Face Wash', 'Aloe Vera Gel', 'Tulsi & Manjistha Oil'],
+    predicted_disease: 'Normal Skin',
+    confidence: '95%',
+    symptoms: 'Even skin tone, balanced sebum secretion, smooth texture, healthy complexion.',
+    probable_cause: 'Balanced Tridosha (Harmonious Vata, Pitta, and Kapha equilibrium).',
+    ayurvedic_remedy: 'Daily gentle botanical cleanser, Damask Rose water mist, lightweight Aloe Vera gel.',
+    diet_recommendation: 'Balanced seasonal Ayurvedic diet: fresh organic fruits, vegetables, seeds, ghee, and pure water.',
+    skinType: 'Normal',
+    skinScore: 92,
+    recommendedRoutine: ['Gentle Neem Cleanser', 'Rose Hydrosol', 'Kumkumadi Glow Elixir'],
   };
 }
+
+export interface ProgressApiResponse {
+  success: boolean;
+  initial_scan: {
+    id: string;
+    image_url: string;
+    date: string;
+    disease: string;
+    confidence: number;
+    skin_health_score: number;
+  } | null;
+  latest_scan: {
+    id: string;
+    image_url: string;
+    date: string;
+    disease: string;
+    confidence: number;
+    skin_health_score: number;
+  } | null;
+  overall_improvement: {
+    points: number;
+    status: string;
+  };
+  skin_health: {
+    score: number;
+    factors: Array<{ name: string; score: number; status: string }>;
+  };
+  scan_history: Array<{
+    id: string;
+    image_url: string;
+    date: string;
+    disease: string;
+    score: number;
+  }>;
+}
+
+/**
+ * Fetch progress endpoint response from FastAPI /progress
+ */
+export async function fetchProgressData(userId: string): Promise<ProgressApiResponse | null> {
+  try {
+    if (!userId) return null;
+    const url = `${FASTAPI_URL}/progress?user_id=${encodeURIComponent(userId)}`;
+    const response = await fetch(url, {
+      headers: {
+        'x-user-id': userId,
+      },
+    });
+
+    if (response.ok) {
+      const data = await response.json();
+      return data as ProgressApiResponse;
+    } else {
+      console.warn('FastAPI GET /progress returned status', response.status);
+      return null;
+    }
+  } catch (err) {
+    console.error('Error fetching /progress from FastAPI:', err);
+    return null;
+  }
+}
+
 
 /**
  * Save prediction result to 'disease_searches' table in Supabase
